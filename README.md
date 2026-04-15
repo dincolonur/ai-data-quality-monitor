@@ -1,57 +1,98 @@
 # AI Data Quality Monitor for Streaming ML Pipelines
 
-A real-time data quality and drift detection system for machine learning pipelines. The system ingests streaming feature events, validates them in near real-time, detects statistical drift against a reference baseline, and triggers structured alerts when problems are found.
+A production-grade real-time data quality and drift detection system for machine learning pipelines. Ingests streaming feature events from Kafka, validates them per micro-batch, detects statistical drift using RFF-MMD, and routes actionable alerts to logs, Slack, email, and a live HTML dashboard — all with hysteresis and backoff to prevent alert flapping.
 
 ---
 
-## Project Goals
-
-1. **Ingest streaming data** from a Kafka topic populated by a simulated ML feature producer
-2. **Validate feature quality** — catch nulls, out-of-range values, type mismatches, and schema violations in each micro-batch
-3. **Detect data drift** — compare live distributions against a baseline using KS test, PSI, Chi-Squared, and null-rate monitoring
-4. **Trigger alerts** — dispatch structured warnings and critical alerts to logs and optionally to Slack when anomalies are detected
-
-This project demonstrates skills in streaming data systems, data engineering, ML-aware monitoring, and production-style system design.
-
----
-
-## Architecture Overview
+## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│         Data Generator / Producer           │
-│   Python · kafka-python · Drift injection   │
-└────────────────────┬────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────┐
-│              Apache Kafka                   │
-│      Topic: ml-features · Port 9092         │
-└────────────────────┬────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────┐
-│       Spark Structured Streaming            │
-│   PySpark · foreachBatch · Trigger: 30s     │
-└──────────┬──────────────────────┬───────────┘
-           │                      │
-           ▼                      ▼
-┌──────────────────┐   ┌──────────────────────┐
-│ Feature          │   │   Drift Detection    │
-│ Validation       │   │  KS · PSI · Chi2     │
-│ Null / Range /   │   │  Null rate drift     │
-│ Schema checks    │   │  vs. baseline        │
-└────────┬─────────┘   └──────────┬───────────┘
-         │                        │
-         └──────────┬─────────────┘
-                    ▼
-┌─────────────────────────────────────────────┐
-│           Alerting & Logging                │
-│  Structured logs · Slack webhook · History  │
-└─────────────────────────────────────────────┘
+Data Generator / Producer  ──────────────────────────────────────────
+  python data_simulator/producer.py                                  │
+  [normal events]  [null_spike]  [range_violation]                   │
+  [schema_corruption]  [distribution_drift]                          │
+                  │                                                   │
+                  ▼                                                   │
+         Apache Kafka  ←─────────────────────────────────────────────┘
+         topic: ml-features
+                  │
+                  ▼
+    Spark Structured Streaming
+    foreachBatch · Trigger: 30s · Checkpointing
+                  │
+          ┌───────┴────────┐
+          ▼                ▼
+  Feature Validation    RFF-MMD Drift Detection
+  Nulls · Ranges        WarmupManager (3 phases)
+  Categories            KS · PSI · Chi-Squared · Null-rate
+          │                ▼
+          └────────┬────────┘
+                   ▼
+          Alert Dispatcher
+          ├── StructuredLogHandler  (always on)
+          ├── FileLogHandler        → logs/alerts.jsonl
+          ├── SlackHandler          → Slack webhook
+          ├── EmailHandler          → SMTP
+          └── DashboardHandler      → docs/dashboard_state.json
+                                           │
+                                           ▼
+                                   docs/dashboard.html
+                                   (auto-refreshes every 5s)
 ```
 
 See `docs/architecture.png` for the rendered diagram.
+
+---
+
+## Key Design Decisions
+
+**RFF-MMD as primary drift detector** — Random Fourier Features approximate the kernel MMD in O(n·D) instead of O(n²). This gives a single numeric drift score per window that is fast enough for streaming and can be calibrated from data.
+
+**Three-phase warm-up** — Before any alert fires, the system goes through WARMUP (collecting baseline) → CALIBRATE (scoring under normal conditions) → MONITORING (comparing against calibrated threshold). This eliminates cold-start false positives entirely.
+
+**Hysteresis + backoff** — Two consecutive violations must occur before an alert fires, and the same alert key cannot re-fire within 120 seconds. This prevents flapping during transient spikes.
+
+**Complementary checks alongside MMD** — KS test, PSI, Chi-Squared, and null-rate monitoring provide per-feature explainability after MMD flags a window-level shift.
+
+---
+
+## Project Structure
+
+```
+ai-data-quality-monitor/
+├── Makefile                          # One-command operations (Option E)
+├── README.md
+├── requirements.txt
+├── docker-compose.yml
+├── .gitignore
+│
+├── data_simulator/
+│   ├── producer.py                   # Kafka producer + 4 incident modes
+│   └── sample_events.json
+│
+├── streaming_job/
+│   ├── spark_job.py                  # Entry point — BatchProcessor
+│   ├── validation.py                 # Null / range / category checks
+│   ├── drift.py                      # RFF-MMD + WarmupManager + KS/PSI/Chi2
+│   ├── alerts.py                     # Multi-handler dispatcher + hysteresis
+│   ├── dashboard.py                  # HTML dashboard generator (Option B)
+│   ├── feature_store.py              # Feature registry + baseline (Option A)
+│   └── model_monitor.py              # Prediction/label/perf tracking (Option D)
+│
+├── configs/
+│   └── config.yaml
+│
+├── notebooks/
+│   └── exploration.ipynb
+│
+├── logs/
+│   └── alerts.jsonl                  # Persistent alert log (auto-created)
+│
+└── docs/
+    ├── architecture.png
+    ├── dashboard.html                # Live HTML dashboard (Option B)
+    └── dashboard_state.json          # Updated by streaming job
+```
 
 ---
 
@@ -62,105 +103,53 @@ See `docs/architecture.png` for the rendered diagram.
 | Language | Python 3.10+ |
 | Streaming Ingestion | Apache Kafka (Confluent Platform 7.5) |
 | Stream Processing | Apache Spark 3.4 — Structured Streaming |
-| Feature Validation | PySpark |
-| Drift Detection | NumPy, SciPy (KS test, PSI, Chi-Squared) |
-| Containerization | Docker & Docker Compose |
-| Alerting | Python `logging` + optional Slack webhook |
-| Notebooks | Jupyter, Matplotlib, Seaborn |
+| Drift Detection | RFF-MMD · KS Test · PSI · Chi-Squared (NumPy, SciPy) |
+| Containerisation | Docker & Docker Compose |
+| Alerting | Logging · JSONL file · Slack webhook · SMTP email |
+| Dashboard | Self-contained HTML + Chart.js (Option B) |
+| Feature Store | In-process JSON registry (Option A) |
+| Model Monitoring | Prediction/label/performance tracking (Option D) |
 
 ---
 
-## Project Structure
-
-```
-ai-data-quality-monitor/
-├── README.md
-├── requirements.txt
-├── docker-compose.yml
-├── .gitignore
-│
-├── data_simulator/
-│   ├── producer.py          # Kafka producer — simulates ML feature events + drift injection
-│   └── sample_events.json   # Sample normal and drifted event payloads
-│
-├── streaming_job/
-│   ├── spark_job.py         # Spark Structured Streaming entry point
-│   ├── validation.py        # Feature validation: nulls, ranges, categories
-│   ├── drift.py             # Drift detection: KS, PSI, Chi-Squared, null rate
-│   └── alerts.py            # Alert dispatcher: logs + Slack
-│
-├── configs/
-│   └── config.yaml          # All system configuration
-│
-├── notebooks/
-│   └── exploration.ipynb    # EDA, baseline profiling, drift visualisation
-│
-└── docs/
-    └── architecture.png     # System architecture diagram
-```
-
----
-
-## How to Run
-
-### Prerequisites
-
-- **Docker & Docker Compose** — for Kafka, Zookeeper, and Spark
-- **Python 3.10+**
-- **Java 11+** — required by Spark
-
----
-
-### Step 1 — Start the Infrastructure
+## Quick Start (One Command — Option E)
 
 ```bash
-docker-compose up -d
+make run
 ```
 
-This starts:
-- **Zookeeper** on port `2181`
-- **Kafka broker** on port `9092` (internal: `29092`)
-- **Kafka UI** on `http://localhost:8080` — inspect topics in your browser
-- **Spark master** on `http://localhost:8081`
-- **Spark worker** (2 cores, 2 GB)
+This starts the Docker infrastructure (Kafka, Zookeeper, Spark), generates the dashboard HTML, and prints the next steps. Then open two more terminals:
 
-Verify Kafka is healthy:
 ```bash
-docker-compose ps
+# Terminal 1 — Spark streaming job
+make spark-job
+
+# Terminal 2 — Feature producer
+make producer
 ```
+
+Open `docs/dashboard.html` in your browser — it auto-refreshes every 5 seconds.
 
 ---
 
-### Step 2 — Install Python Dependencies
+## Manual Setup
+
+### 1. Install dependencies
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate       # Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
----
-
-### Step 3 — Start the Feature Producer
+### 2. Start infrastructure
 
 ```bash
-python data_simulator/producer.py
+make infra-up
+# Kafka UI  → http://localhost:8080
+# Spark UI  → http://localhost:8081
 ```
 
-Optional flags:
-```bash
-python data_simulator/producer.py \
-  --topic ml-features \
-  --interval 0.2 \
-  --drift-after 300 \
-  --total-events 5000
-```
-
-The producer sends normal feature events and then injects drift (age shift, null injection, amount spikes, bad device types) after `--drift-after` events.
-
----
-
-### Step 4 — Run the Spark Streaming Job
+### 3. Start the Spark job
 
 ```bash
 spark-submit \
@@ -168,81 +157,192 @@ spark-submit \
   streaming_job/spark_job.py
 ```
 
-The job will:
-1. Read from the `ml-features` Kafka topic
-2. Validate each micro-batch against the rules in `configs/config.yaml`
-3. Build a baseline distribution from the first 5 batches
-4. Run drift detection on all subsequent batches
-5. Log alerts to stdout and optionally to Slack
-
----
-
-### Step 5 — Explore Locally in the Notebook
+### 4. Start the producer
 
 ```bash
-jupyter notebook notebooks/exploration.ipynb
+python data_simulator/producer.py --interval 0.2 --total-events 10000
 ```
 
-The notebook lets you simulate both normal and drifted data, visualise distributions, and prototype KS / PSI / Chi-Squared detection logic interactively.
+### 5. Open the dashboard
+
+```bash
+make dashboard
+```
 
 ---
 
-## Configuration
+## Warm-up Phases
 
-All system parameters are in `configs/config.yaml`:
+The system goes through three phases before alerting:
+
+| Phase | Batches | What happens |
+|---|---|---|
+| **WARMUP** | 1–5 | Collecting raw rows to fit the RFF-MMD baseline |
+| **CALIBRATE** | 6–10 | Scoring under normal conditions; setting the 99th-percentile threshold |
+| **MONITORING** | 11+ | Full drift detection active; alerts can fire |
+
+Configured in `configs/config.yaml` under `warmup:`.
+
+---
+
+## Example Log Output
+
+```
+# Warm-up phase
+2026-04-15 10:00:02 [INFO] drift — [WARMUP 1/5] Collected 312 baseline rows. 4 batch(es) remaining.
+2026-04-15 10:00:32 [INFO] drift — [WARMUP 2/5] Collected 634 baseline rows. 3 batch(es) remaining.
+
+# Calibration phase
+2026-04-15 10:02:32 [INFO] drift — [CALIBRATE 1/5] MMD score=0.000821. 4 batch(es) remaining.
+2026-04-15 10:03:02 [INFO] drift — [CALIBRATE 2/5] MMD score=0.000934. 3 batch(es) remaining.
+2026-04-15 10:04:32 [INFO] drift — [Calibrate → Monitoring] Threshold set to 0.003471. Drift detection is now ACTIVE.
+
+# Normal monitoring
+2026-04-15 10:05:02 [INFO] spark_job — [batch 11] phase=monitoring mmd=0.00112 threshold=0.00347 val_issues=0 rows=287
+2026-04-15 10:05:32 [INFO] drift — [batch 12] Complementary checks: no drift detected.
+
+# Incident begins (null_spike)
+2026-04-15 10:06:02 [WARNING] validation — [batch 13] ⚠ 2 issue type(s) found in 290 rows (validity rate: 74.1%)
+2026-04-15 10:06:02 [WARNING] validation —   → [null_value] feature='age' count=162 rate=55.86%
+2026-04-15 10:06:02 [WARNING] validation —   → [null_value] feature='purchase_amount' count=148 rate=51.03%
+2026-04-15 10:06:02 [INFO] alerts — [Hysteresis] key='validation_null_value_age' violation 1/2 — waiting.
+
+# Second consecutive bad window — alert fires
+2026-04-15 10:06:32 [WARNING] alerts — [ALERT:HIGH] batch=14 type=validation_null_value | what=Feature 'age' has null_value in 171 rows (59.0%) | why=Null Value detected above threshold | value=0.59
+2026-04-15 10:06:32 [WARNING] alerts — [ALERT:HIGH] batch=14 type=validation_null_value | what=Feature 'purchase_amount' has null_value in 153 rows (52.8%) | why=Null Value detected above threshold | value=0.528
+
+# Distribution drift detected (distribution_drift incident)
+2026-04-15 10:10:02 [WARNING] drift — [batch 22] RFF-MMD DRIFT: score=0.031470 > threshold=0.003471
+2026-04-15 10:10:02 [WARNING] drift — [KS DRIFT] feature='age' ks=0.7821 p=0.000001
+2026-04-15 10:10:02 [WARNING] drift — [PSI ALERT] feature='purchase_amount' psi=0.4120 (>0.2)
+2026-04-15 10:10:02 [WARNING] alerts — [Hysteresis] key='rff_mmd_drift' violation 1/2 — waiting.
+2026-04-15 10:10:32 [CRITICAL] alerts — [ALERT:CRITICAL] batch=23 type=rff_mmd_drift | what=RFF-MMD drift score=0.029810 exceeds threshold=0.003471 | why=Feature distribution has shifted significantly from baseline | value=0.02981
+```
+
+---
+
+## Incident Testing
+
+Four controlled incidents can be injected via the producer:
+
+| Incident | Command | What it simulates |
+|---|---|---|
+| Null spike | `make incident-null` | 80% of events have nulled features (pipeline outage) |
+| Range violation | `make incident-range` | Out-of-bounds age, negative amounts, invalid durations |
+| Schema corruption | `make incident-schema` | Unknown device types, type mismatches, missing user_id |
+| Distribution drift | `make incident-drift` | Age shifts to 65–105, purchase amounts spike 10×  |
+
+Each incident starts after 200 normal events, runs for 60–120 seconds, then returns to normal. The system should detect the issue within 2 consecutive bad windows and avoid re-alerting for 2 minutes after the first alert.
+
+---
+
+## Alert Channels
+
+| Channel | Config key | Format |
+|---|---|---|
+| Console log | always on | Structured `[ALERT:SEVERITY]` lines |
+| File log | `alerts.log_file` | JSONL — one JSON object per alert |
+| Slack | `alerts.slack_webhook_url` | Block-kit message with severity colour |
+| Email | `alerts.email.enabled` | Plain-text SMTP with subject `[SEVERITY] type (batch N)` |
+| Dashboard | `alerts.dashboard_state_path` | JSON state read by `docs/dashboard.html` |
+
+Each alert includes: **what** failed, **why** it failed, **severity**, and the **metric value** that triggered it.
+
+---
+
+## Hysteresis & Backoff
+
+Configured in `configs/config.yaml` under `alerts.hysteresis`:
 
 ```yaml
-kafka:
-  bootstrap_servers: "localhost:9092"
-  topic: "ml-features"
-
-drift:
-  baseline_window_batches: 5    # batches used to build baseline
-  ks:
-    significance_level: 0.05
-  psi:
-    warning_threshold: 0.1
-    alert_threshold: 0.2
-
 alerts:
-  enabled: true
-  slack_webhook_url: null       # replace with your Slack webhook URL
+  hysteresis:
+    required_consecutive: 2   # 2 bad windows before alert fires
+    cooldown_seconds: 120     # no re-alert for 2 minutes per key
+```
+
+Each alert key (e.g. `validation_null_value_age`, `rff_mmd_drift`) is tracked independently.
+
+---
+
+## Extensions
+
+### Option A — Feature Store (`streaming_job/feature_store.py`)
+
+A `FeatureRegistry` stores named baseline snapshots (mean, std, percentiles, frequency distributions) in a JSON file. Use it to version and compare baselines across model versions or time periods.
+
+```python
+registry = FeatureRegistry("feature_store/registry.json")
+registry.register_baseline("v1_2026-Q1", baseline_df)
+report = registry.compare_to_baseline("v1_2026-Q1", current_df)
+```
+
+### Option B — Live Dashboard (`streaming_job/dashboard.py`)
+
+A self-contained HTML dashboard at `docs/dashboard.html` reads `docs/dashboard_state.json` every 5 seconds. Shows RFF-MMD score over time, per-feature null rates, batch validity rates, and a scrollable alert history table with severity badges.
+
+```bash
+make dashboard    # generate + open in browser
+```
+
+### Option C — Slack Alerts
+
+Set `alerts.slack_webhook_url` in `configs/config.yaml`:
+
+```yaml
+alerts:
+  slack_webhook_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+```
+
+Alerts of severity MEDIUM and above are posted as Slack Block Kit messages.
+
+### Option D — Model Monitoring (`streaming_job/model_monitor.py`)
+
+`ModelMonitor` tracks prediction drift (KS on score distributions), label drift (z-test on positive rate), and performance degradation (rolling accuracy + AUC) from a joined prediction + ground-truth stream.
+
+```python
+monitor = ModelMonitor(config)
+report = monitor.process_prediction_batch(predictions, labels, batch_id)
+```
+
+### Option E — One-Command Docker Setup (`Makefile`)
+
+```bash
+make run             # start everything
+make incident-drift  # inject a distribution shift
+make infra-down      # stop all containers
+make clean           # remove caches and venv
 ```
 
 ---
 
-## Monitored Features
+## Configuration Reference
 
-| Feature | Type | Validation Rule |
-|---|---|---|
-| `user_id` | string | not null, non-empty |
-| `age` | int | 0 – 120 |
-| `purchase_amount` | float | >= 0.0 |
-| `session_duration` | int | >= 0 |
-| `page_views` | int | >= 0 |
-| `device_type` | string | mobile / desktop / tablet |
-| `timestamp` | long | valid epoch ms |
+All parameters live in `configs/config.yaml`:
 
----
+```yaml
+warmup:
+  window_batches: 5          # batches to collect baseline
+  calibration_batches: 5     # batches to calibrate threshold
+  calibration_percentile: 99 # threshold = 99th pct of normal scores
 
-## Drift Detection Methods
+drift:
+  rff_mmd:
+    n_components: 200        # RFF dimensionality
+    sigma: null              # bandwidth (null = median heuristic)
 
-**Kolmogorov-Smirnov (KS) Test** — two-sample test for distribution shift on continuous features. Alerts when p-value falls below the configured significance level (default: 0.05).
-
-**Population Stability Index (PSI)** — binned comparison of reference vs. current distribution. PSI < 0.1 is stable, 0.1–0.2 is a warning, > 0.2 is a critical shift.
-
-**Chi-Squared Test** — categorical drift detection for features like `device_type`. Detects when category frequency distributions diverge significantly.
-
-**Null Rate Drift** — monitors per-feature null rates across batches and alerts when the delta exceeds a threshold (default: 5 percentage points).
-
----
-
-## Extending the Project
-
-- Integrate **Feast** as a feature store to pull reference baselines
-- Add **MLflow** to correlate data drift events with model performance metrics
-- Connect **Grafana + Prometheus** for live dashboards
-- Deploy on **Kubernetes** with Helm and persist alerts to a database
+alerts:
+  hysteresis:
+    required_consecutive: 2
+    cooldown_seconds: 120
+  log_file: "logs/alerts.jsonl"
+  dashboard_state_path: "docs/dashboard_state.json"
+  slack_webhook_url: null
+  email:
+    enabled: false
+    smtp_host: "smtp.gmail.com"
+    recipients: ["oncall@example.com"]
+```
 
 ---
 
