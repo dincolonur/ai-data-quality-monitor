@@ -1,0 +1,79 @@
+[
+  {
+    "event_id": "evt_00000001",
+    "user_id": "user_42301",
+    "age": 34,
+    "purchase_amount": 127.50,
+    "session_duration": 420,
+    "page_views": 12,
+    "device_type": "mobile",
+    "timestamp": 1713139200000
+  },
+  {
+    "event_id": "evt_00000002",
+    "user_id": "user_87654",
+    "age": 28,
+    "purchase_amount": 0.00,
+    "session_duration": 60,
+    "page_views": 3,
+    "device_type": "desktop",
+    "timestamp": 1713139201000
+  },
+  {
+    "event_id": "evt_00000003",
+    "user_id": "user_11111",
+    "age": 52,
+    "purchase_amount": 499.99,
+    "session_duration": 1800,
+    "page_views": 45,
+    "device_type": "tablet",
+    "timestamp": 1713139202000
+  },
+  {
+    "_comment": "--- DRIFTED EVENTS BELOW (injected anomalies) ---"
+  },
+  {
+    "event_id": "evt_00000301",
+    "user_id": "user_55523",
+    "age": null,
+    "purchase_amount": 89.00,
+    "session_duration": 300,
+    "page_views": 8,
+    "device_type": "mobile",
+    "timestamp": 1713139503000,
+    "_drift_type": "null_injection"
+  },
+  {
+    "event_id": "evt_00000302",
+    "user_id": "user_99901",
+    "age": 95,
+    "purchase_amount": 15.00,
+    "session_duration": 120,
+    "page_views": 2,
+    "device_type": "desktop",
+    "timestamp": 1713139504000,
+    "_drift_type": "age_shift"
+  },
+  {
+    "event_id": "evt_00000303",
+    "user_id": "user_77712",
+    "age": 41,
+    "purchase_amount": 28750.00,
+    "session_duration": 90,
+    "page_views": 1,
+    "device_type": "mobile",
+    "timestamp": 1713139505000,
+    "_drift_type": "amount_spike"
+  },
+  {
+    "event_id": "evt_00000304",
+    "user_id": "user_33344",
+    "age": 29,
+    "purchase_amount": 55.00,
+    "session_duration": 200,
+    "page_views": 6,
+    "device_type": "smartwatch",
+    "timestamp": 1713139506000,
+    "_drift_type": "bad_device"
+  }
+]

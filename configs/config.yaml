@@ -1,0 +1,101 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# AI Data Quality Monitor — Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+
+app_name: DataQualityMonitor
+
+# ── Kafka ──────────────────────────────────────────────────────────────────────
+kafka:
+  bootstrap_servers: "localhost:9092"
+  topic: "ml-features"
+  starting_offsets: "latest"        # Use "earliest" to reprocess from start
+  consumer_group: "dq-monitor-group"
+
+# ── Spark ──────────────────────────────────────────────────────────────────────
+spark:
+  trigger_interval: "30 seconds"    # Micro-batch interval
+  checkpoint_location: "/tmp/spark_checkpoints/dq_monitor"
+  shuffle_partitions: 4
+  log_level: "WARN"
+
+# ── Feature Validation Rules ───────────────────────────────────────────────────
+validation:
+  null_alert_threshold: 0.05        # Alert if null rate > 5%
+  features:
+    user_id:
+      nullable: false
+    age:
+      nullable: false
+      min: 0
+      max: 120
+    purchase_amount:
+      nullable: false
+      min: 0.0
+      max: null                     # No upper bound
+    session_duration:
+      nullable: false
+      min: 0
+      max: null
+    page_views:
+      nullable: false
+      min: 0
+      max: null
+    device_type:
+      nullable: false
+      allowed_values:
+        - "mobile"
+        - "desktop"
+        - "tablet"
+    timestamp:
+      nullable: false
+      min: 0
+
+# ── Drift Detection ────────────────────────────────────────────────────────────
+drift:
+  enabled: true
+  baseline_window_batches: 5       # Number of batches used to build baseline
+  baseline_save_path: "/tmp/dq_baseline.json"
+
+  # Kolmogorov-Smirnov test
+  ks:
+    significance_level: 0.05
+
+  # Population Stability Index
+  psi:
+    warning_threshold: 0.1
+    alert_threshold: 0.2
+    n_bins: 10
+
+  # Null rate drift
+  null_rate:
+    drift_threshold: 0.05          # Alert if null rate changes by > 5pp
+
+  # Chi-squared test for categorical features
+  chi_squared:
+    significance_level: 0.05
+
+  numeric_features:
+    - age
+    - purchase_amount
+    - session_duration
+    - page_views
+
+  categorical_features:
+    - device_type
+
+# ── Alerting ───────────────────────────────────────────────────────────────────
+alerts:
+  enabled: true
+  log_level: "WARNING"
+  slack_webhook_url: null          # Set to your Slack webhook URL to enable
+  # slack_webhook_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+
+# ── Optional Integrations ──────────────────────────────────────────────────────
+# feast:
+#   enabled: false
+#   feature_store_yaml: "feature_store.yaml"
+
+# mlflow:
+#   enabled: false
+#   tracking_uri: "http://localhost:5000"
+#   experiment_name: "data-quality-monitor"
