@@ -1,0 +1,317 @@
+{
+  "alerts": [
+    {
+      "timestamp": "2026-04-16T04:46:31.514555+00:00",
+      "batch_id": 13,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'session_duration' has null_value in 50 rows (34.0%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'session_duration' has null_value in 50 rows (34.0%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.3401,
+      "details": {
+        "feature": "session_duration",
+        "issue_type": "null_value",
+        "count": 50,
+        "rate": 0.3401
+      }
+    },
+    {
+      "timestamp": "2026-04-16T04:46:31.513904+00:00",
+      "batch_id": 13,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'purchase_amount' has null_value in 70 rows (47.6%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'purchase_amount' has null_value in 70 rows (47.6%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.4762,
+      "details": {
+        "feature": "purchase_amount",
+        "issue_type": "null_value",
+        "count": 70,
+        "rate": 0.4762
+      }
+    },
+    {
+      "timestamp": "2026-04-16T04:46:31.512977+00:00",
+      "batch_id": 13,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'age' has null_value in 62 rows (42.2%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'age' has null_value in 62 rows (42.2%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.4218,
+      "details": {
+        "feature": "age",
+        "issue_type": "null_value",
+        "count": 62,
+        "rate": 0.4218
+      }
+    },
+    {
+      "timestamp": "2026-04-16T04:44:02.187624+00:00",
+      "batch_id": 8,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'session_duration' has null_value in 52 rows (35.4%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'session_duration' has null_value in 52 rows (35.4%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.3537,
+      "details": {
+        "feature": "session_duration",
+        "issue_type": "null_value",
+        "count": 52,
+        "rate": 0.3537
+      }
+    },
+    {
+      "timestamp": "2026-04-16T04:44:02.187321+00:00",
+      "batch_id": 8,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'purchase_amount' has null_value in 63 rows (42.9%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'purchase_amount' has null_value in 63 rows (42.9%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.4286,
+      "details": {
+        "feature": "purchase_amount",
+        "issue_type": "null_value",
+        "count": 63,
+        "rate": 0.4286
+      }
+    },
+    {
+      "timestamp": "2026-04-16T04:44:02.186479+00:00",
+      "batch_id": 8,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'age' has null_value in 54 rows (36.7%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'age' has null_value in 54 rows (36.7%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.3673,
+      "details": {
+        "feature": "age",
+        "issue_type": "null_value",
+        "count": 54,
+        "rate": 0.3673
+      }
+    }
+  ],
+  "metrics_history": [
+    {
+      "batch_id": 0,
+      "timestamp": "2026-04-16T01:04:27.977630+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 1,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 0,
+      "timestamp": "2026-04-16T02:43:43.664315+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 1,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 1,
+      "timestamp": "2026-04-16T02:44:04.354099+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 10008,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 2,
+      "timestamp": "2026-04-16T02:44:33.010061+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 146,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 3,
+      "timestamp": "2026-04-16T02:45:03.073355+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 147,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 4,
+      "timestamp": "2026-04-16T02:45:32.965707+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 147,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 5,
+      "timestamp": "2026-04-16T04:42:41.406522+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 90,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 6,
+      "timestamp": "2026-04-16T04:43:03.513108+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 210,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 7,
+      "timestamp": "2026-04-16T04:43:33.076616+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 0.0,
+      "row_count": 147,
+      "null_rate_age": 0.4218,
+      "null_rate_purchase_amount": 0.483,
+      "null_rate_session_duration": 0.3605,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 8,
+      "timestamp": "2026-04-16T04:44:02.958545+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 0.0,
+      "row_count": 147,
+      "null_rate_age": 0.3673,
+      "null_rate_purchase_amount": 0.4286,
+      "null_rate_session_duration": 0.3537,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 9,
+      "timestamp": "2026-04-16T04:44:32.717864+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 0.0,
+      "row_count": 146,
+      "null_rate_age": 0.4041,
+      "null_rate_purchase_amount": 0.4178,
+      "null_rate_session_duration": 0.3288,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 10,
+      "timestamp": "2026-04-16T04:45:04.090539+00:00",
+      "phase": "calibrate",
+      "mmd_score": 0.111209,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 0.0,
+      "row_count": 147,
+      "null_rate_age": 0.4082,
+      "null_rate_purchase_amount": 0.4558,
+      "null_rate_session_duration": 0.3469,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 11,
+      "timestamp": "2026-04-16T04:45:32.202518+00:00",
+      "phase": "calibrate",
+      "mmd_score": 0.032138,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 0.0,
+      "row_count": 147,
+      "null_rate_age": 0.3333,
+      "null_rate_purchase_amount": 0.381,
+      "null_rate_session_duration": 0.4014,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 12,
+      "timestamp": "2026-04-16T04:46:02.053071+00:00",
+      "phase": "calibrate",
+      "mmd_score": 0.012388,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 0.0,
+      "row_count": 147,
+      "null_rate_age": 0.4286,
+      "null_rate_purchase_amount": 0.415,
+      "null_rate_session_duration": 0.4218,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 13,
+      "timestamp": "2026-04-16T04:46:32.713773+00:00",
+      "phase": "calibrate",
+      "mmd_score": 0.021133,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 0.0,
+      "row_count": 147,
+      "null_rate_age": 0.4218,
+      "null_rate_purchase_amount": 0.4762,
+      "null_rate_session_duration": 0.3401,
+      "null_rate_page_views": 0.0
+    }
+  ],
+  "summary": {
+    "last_batch": 13,
+    "last_updated": "2026-04-16T04:46:32.713773+00:00",
+    "total_alerts": 6
+  }
+}

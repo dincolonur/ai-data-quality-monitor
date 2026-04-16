@@ -21,6 +21,12 @@ import logging
 import sys
 from pathlib import Path
 
+# Ensure the project root is on sys.path so streaming_job package is importable
+# when launched via spark-submit (which doesn't add the parent dir automatically)
+_ROOT = Path(__file__).parent.parent.resolve()
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 import yaml
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
@@ -174,14 +180,16 @@ class BatchProcessor:
         self.dispatcher.push_dashboard_metrics(batch_id, metrics)
 
         # ── 5. Log one-liner summary ────────────────────────────────────────
-        phase   = drift_report["phase"]
-        mmd     = drift_report.get("mmd_score")
-        thr     = drift_report.get("mmd_threshold")
+        phase    = drift_report["phase"]
+        mmd      = drift_report.get("mmd_score")
+        thr      = drift_report.get("mmd_threshold")
         n_issues = val_summary.get("issue_count", 0)
+        mmd_str  = f"{mmd:.5f}" if mmd is not None else "N/A"
+        thr_str  = f"{thr:.5f}" if thr is not None else "N/A"
         logger.info(
             f"[batch {batch_id}] phase={phase} "
-            f"mmd={mmd:.5f if mmd else 'N/A'} "
-            f"threshold={thr:.5f if thr else 'N/A'} "
+            f"mmd={mmd_str} "
+            f"threshold={thr_str} "
             f"val_issues={n_issues} "
             f"rows={row_count}"
         )

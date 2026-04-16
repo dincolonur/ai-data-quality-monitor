@@ -23,8 +23,10 @@ Run:
 """
 
 import asyncio
+import glob
 import json
 import os
+import shutil
 import signal
 import socket
 import subprocess
@@ -74,30 +76,43 @@ class ManagedProcess:
         self._proc: Optional[subprocess.Popen] = None
         self._thread = None
 
-    def start(self) -> None:
+    def start(self) -> str | None:
+        """Start the process. Returns an error string on failure, None on success."""
         if self.is_running():
-            return
-        self._proc = subprocess.Popen(
-            self.cmd,
-            cwd=str(self.cwd),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-        )
+            return None
+        _append_log("system", f"[{self.name}] launching: {' '.join(self.cmd)}")
+        try:
+            self._proc = subprocess.Popen(
+                self.cmd,
+                cwd=str(self.cwd),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+        except FileNotFoundError as e:
+            msg = f"[{self.name}] ERROR — binary not found: {e}"
+            _append_log("system", msg)
+            return msg
+        except Exception as e:
+            msg = f"[{self.name}] ERROR — failed to launch: {e}"
+            _append_log("system", msg)
+            return msg
         import threading
         self._thread = threading.Thread(target=self._drain, daemon=True)
         self._thread.start()
         _append_log("system", f"[{self.name}] started (PID {self._proc.pid})")
+        return None
 
     def _drain(self) -> None:
         """Read process output line by line into the log buffer."""
         try:
             for line in self._proc.stdout:
                 _append_log(self.name, line)
-        except Exception:
-            pass
-        _append_log("system", f"[{self.name}] process exited")
+        except Exception as e:
+            _append_log("system", f"[{self.name}] drain error: {e}")
+        rc = self._proc.poll()
+        _append_log("system", f"[{self.name}] process exited (returncode={rc})")
 
     def stop(self) -> None:
         if not self._proc:
@@ -198,7 +213,9 @@ async def producer_start(params: ProducerParams):
         "--total-events",      str(params.total_events),
     ]
     _producer.cmd = cmd
-    _producer.start()
+    err = _producer.start()
+    if err:
+        raise HTTPException(status_code=500, detail=err)
     return {"status": "started", "pid": _producer.pid, "params": params.dict()}
 
 
@@ -215,12 +232,39 @@ async def producer_stop():
 SPARK_PKG = "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.0"
 
 
+def _find_spark_submit() -> str:
+    """Locate spark-submit: PATH → SPARK_HOME env → common install dirs."""
+    # 1. Already on PATH
+    found = shutil.which("spark-submit")
+    if found:
+        return found
+    # 2. SPARK_HOME env var
+    spark_home = os.environ.get("SPARK_HOME")
+    if spark_home:
+        candidate = os.path.join(spark_home, "bin", "spark-submit")
+        if os.path.isfile(candidate):
+            return candidate
+    # 3. Common macOS install locations
+    patterns = [
+        os.path.expanduser("~/Documents/server/spark-*/bin/spark-submit"),
+        os.path.expanduser("~/spark-*/bin/spark-submit"),
+        "/opt/spark/bin/spark-submit",
+        "/usr/local/bin/spark-submit",
+    ]
+    for pattern in patterns:
+        matches = sorted(glob.glob(pattern), reverse=True)  # newest first
+        if matches:
+            return matches[0]
+    return "spark-submit"  # fallback — will raise FileNotFoundError if missing
+
+
 @app.post("/api/spark/start")
 async def spark_start():
     if _spark.is_running():
         return {"status": "already_running", "pid": _spark.pid}
 
-    spark_submit = "spark-submit"  # must be on PATH
+    spark_submit = _find_spark_submit()
+    _append_log("system", f"[spark] using spark-submit: {spark_submit}")
     cmd = [
         spark_submit,
         "--packages", SPARK_PKG,
@@ -228,8 +272,10 @@ async def spark_start():
         str(ROOT / "streaming_job" / "spark_job.py"),
     ]
     _spark.cmd = cmd
-    _spark.start()
-    return {"status": "started", "pid": _spark.pid}
+    err = _spark.start()
+    if err:
+        raise HTTPException(status_code=500, detail=err)
+    return {"status": "started", "pid": _spark.pid, "spark_submit": spark_submit}
 
 
 @app.post("/api/spark/stop")
@@ -295,6 +341,15 @@ async def update_config(request: Request):
     merged = deep_merge(cfg, patch)
     CONFIG_PATH.write_text(yaml.dump(merged, default_flow_style=False, sort_keys=False))
     return {"status": "saved", "config": merged}
+
+
+# ── Log snapshot (REST fallback) ───────────────────────────────────────────────
+
+@app.get("/api/logs")
+async def get_logs(limit: int = 100):
+    """Return the last N log entries as JSON — useful if SSE isn't connecting."""
+    buf = list(LOG_BUFFER)
+    return buf[-limit:]
 
 
 # ── SSE Log Stream ─────────────────────────────────────────────────────────────

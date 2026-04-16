@@ -24,7 +24,7 @@ PIP         := $(VENV)/bin/pip
 PYTHON_VENV := $(VENV)/bin/python
 SPARK_PKG   := org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.0
 
-.PHONY: all setup infra-up infra-down infra-logs producer spark-job dashboard run \
+.PHONY: all setup infra-up infra-down infra-logs producer spark-job dashboard ui run \
         incident-null incident-range incident-schema incident-drift \
         test lint clean help
 
@@ -96,29 +96,37 @@ spark-job: setup
 		--conf spark.sql.shuffle.partitions=4 \
 		streaming_job/spark_job.py
 
-# ── Dashboard ──────────────────────────────────────────────────────────────────
+# ── Dashboard (static HTML) ────────────────────────────────────────────────────
 dashboard: setup
 	$(PYTHON_VENV) streaming_job/dashboard.py --open
 	@echo "Dashboard generated at docs/dashboard.html"
 	@echo "Keep the Spark job running to see live updates."
 
+# ── Control Panel UI ───────────────────────────────────────────────────────────
+ui: setup
+	@echo ""
+	@echo "══════════════════════════════════════════════"
+	@echo "  Control Panel → http://localhost:7070"
+	@echo "══════════════════════════════════════════════"
+	@echo ""
+	$(PYTHON_VENV) -m uvicorn ui.app:app --host 0.0.0.0 --port 7070 --log-level warning
+
 # ── End-to-End Run ─────────────────────────────────────────────────────────────
-run: setup infra-up dashboard
+run: setup infra-up
 	@echo ""
-	@echo "══════════════════════════════════════════════"
-	@echo "  Stack is up. Now open TWO more terminals:  "
+	@echo "══════════════════════════════════════════════════════"
+	@echo "  Infrastructure is up. Start the control panel:     "
 	@echo ""
-	@echo "  Terminal 1 — Start the Spark job:"
-	@echo "    make spark-job"
+	@echo "    make ui                                          "
+	@echo "    → then open http://localhost:7070               "
 	@echo ""
-	@echo "  Terminal 2 — Start the producer:"
-	@echo "    make producer"
+	@echo "  From the UI you can start the producer and         "
+	@echo "  inject incidents without touching the terminal.    "
 	@echo ""
-	@echo "  To inject an incident:"
-	@echo "    make incident-drift"
-	@echo ""
-	@echo "  Dashboard: docs/dashboard.html (auto-refreshes)"
-	@echo "══════════════════════════════════════════════"
+	@echo "  Or use the CLI directly:                           "
+	@echo "    make spark-job   (Terminal 1)                   "
+	@echo "    make producer    (Terminal 2)                   "
+	@echo "══════════════════════════════════════════════════════"
 
 # ── Linting ────────────────────────────────────────────────────────────────────
 lint: setup
@@ -155,6 +163,7 @@ help:
 	@echo "  make incident-schema  Schema corruption (60s)"
 	@echo "  make incident-drift   Distribution drift (120s)"
 	@echo ""
+	@echo "  make ui               Start web control panel (:7070)"
 	@echo "  make lint             Run flake8"
 	@echo "  make clean            Remove caches and venv"
 	@echo "  make clean-data       Clear runtime state files"
