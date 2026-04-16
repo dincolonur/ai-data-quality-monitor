@@ -1,0 +1,311 @@
+"""
+streaming_job/dashboard.py
+───────────────────────────
+Generates a self-contained HTML dashboard that reads from dashboard_state.json
+and auto-refreshes every 5 seconds.
+
+Usage:
+    python streaming_job/dashboard.py           # generates docs/dashboard.html
+    python streaming_job/dashboard.py --open    # generates + opens in browser
+"""
+
+import json
+import webbrowser
+import argparse
+from pathlib import Path
+
+DASHBOARD_HTML = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AI Data Quality Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0d1117;--surface:#161b22;--border:#30363d;
+    --text:#e6edf3;--muted:#8b949e;
+    --green:#3fb950;--yellow:#d29922;--orange:#f0883e;--red:#f85149;--blue:#58a6ff;
+    --purple:#bc8cff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;}
+  header{background:var(--surface);border-bottom:1px solid var(--border);
+         padding:16px 28px;display:flex;align-items:center;justify-content:space-between;}
+  header h1{font-size:18px;font-weight:600;letter-spacing:.3px;}
+  header h1 span{color:var(--blue);}
+  #status-badge{font-size:12px;padding:4px 10px;border-radius:20px;font-weight:600;
+                background:#1f2f1f;color:var(--green);border:1px solid var(--green);}
+  #status-badge.stale{background:#2f1f1f;color:var(--red);border-color:var(--red);}
+  main{padding:24px 28px;display:grid;gap:20px;}
+  .row{display:grid;gap:16px;}
+  .row-4{grid-template-columns:repeat(4,1fr);}
+  .row-2{grid-template-columns:repeat(2,1fr);}
+  .row-3{grid-template-columns:2fr 1fr;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;}
+  .card h2{font-size:12px;font-weight:600;text-transform:uppercase;
+           letter-spacing:.8px;color:var(--muted);margin-bottom:14px;}
+  .kpi{text-align:center;}
+  .kpi .val{font-size:32px;font-weight:700;line-height:1.1;}
+  .kpi .lbl{font-size:11px;color:var(--muted);margin-top:4px;}
+  .ok{color:var(--green);} .warn{color:var(--yellow);} .high{color:var(--orange);} .crit{color:var(--red);}
+  canvas{max-height:220px;}
+  table{width:100%;border-collapse:collapse;}
+  th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;
+     color:var(--muted);padding:6px 10px;border-bottom:1px solid var(--border);text-align:left;}
+  td{padding:8px 10px;border-bottom:1px solid #1c2128;font-size:13px;}
+  tr:last-child td{border-bottom:none;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+  .badge.low     {background:#1f2f1f;color:var(--green);}
+  .badge.medium  {background:#2f2a1a;color:var(--yellow);}
+  .badge.high    {background:#2f1f0f;color:var(--orange);}
+  .badge.critical{background:#2f1414;color:var(--red);}
+  .badge.info    {background:#141a2f;color:var(--blue);}
+  #phase-label{font-size:13px;font-weight:600;padding:6px 14px;border-radius:6px;
+               background:#1a2f1a;color:var(--green);border:1px solid var(--green);display:inline-block;}
+  #phase-label.warmup    {background:#1a1a2f;color:var(--blue);border-color:var(--blue);}
+  #phase-label.calibrate {background:#2f2a1a;color:var(--yellow);border-color:var(--yellow);}
+  .empty{color:var(--muted);font-style:italic;text-align:center;padding:20px 0;}
+  #last-updated{font-size:11px;color:var(--muted);}
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Data Quality <span>Monitor</span></h1>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <span id="last-updated">Loading…</span>
+    <span id="status-badge">LIVE</span>
+  </div>
+</header>
+
+<main>
+  <!-- KPI row -->
+  <div class="row row-4">
+    <div class="card kpi"><div class="val" id="kpi-batch">—</div><div class="lbl">Last Batch</div></div>
+    <div class="card kpi"><div class="val" id="kpi-mmd">—</div><div class="lbl">MMD Score</div></div>
+    <div class="card kpi"><div class="val" id="kpi-alerts">—</div><div class="lbl">Total Alerts</div></div>
+    <div class="card" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);">Pipeline Phase</div>
+      <span id="phase-label">—</span>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="row row-2">
+    <div class="card">
+      <h2>RFF-MMD Drift Score</h2>
+      <canvas id="chart-mmd"></canvas>
+    </div>
+    <div class="card">
+      <h2>Null Rates by Feature</h2>
+      <canvas id="chart-nulls"></canvas>
+    </div>
+  </div>
+
+  <!-- Alerts + Feature validation -->
+  <div class="row row-3">
+    <div class="card">
+      <h2>Recent Alerts</h2>
+      <table id="alert-table">
+        <thead><tr>
+          <th>Time</th><th>Type</th><th>What</th><th>Why</th><th>Value</th><th>Sev</th>
+        </tr></thead>
+        <tbody id="alert-body"><tr><td colspan="6" class="empty">No alerts yet</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Batch Validity Rate</h2>
+      <canvas id="chart-validity"></canvas>
+    </div>
+  </div>
+</main>
+
+<script>
+const STATE_URL = './dashboard_state.json';
+const REFRESH_MS = 5000;
+let mmdChart, nullChart, validityChart;
+let lastBatchId = -1;
+
+const FEATURES = ['age','purchase_amount','session_duration','page_views'];
+const COLORS   = ['#58a6ff','#3fb950','#f0883e','#bc8cff'];
+
+function makeChart(id, label, color){
+  const ctx = document.getElementById(id).getContext('2d');
+  return new Chart(ctx,{
+    type:'line',
+    data:{labels:[],datasets:[{
+      label,data:[],borderColor:color,backgroundColor:color+'22',
+      borderWidth:2,pointRadius:2,tension:0.3,fill:true
+    }]},
+    options:{
+      animation:false,
+      scales:{
+        x:{ticks:{color:'#8b949e',maxTicksLimit:8},grid:{color:'#21262d'}},
+        y:{ticks:{color:'#8b949e'},grid:{color:'#21262d'},beginAtZero:true}
+      },
+      plugins:{legend:{display:false}}
+    }
+  });
+}
+
+function makeMultiChart(id, labels, colors){
+  const ctx = document.getElementById(id).getContext('2d');
+  return new Chart(ctx,{
+    type:'line',
+    data:{labels:[],datasets: labels.map((l,i)=>({
+      label:l, data:[], borderColor:colors[i], backgroundColor:colors[i]+'22',
+      borderWidth:1.5, pointRadius:1.5, tension:0.3, fill:false
+    }))},
+    options:{
+      animation:false,
+      scales:{
+        x:{ticks:{color:'#8b949e',maxTicksLimit:8},grid:{color:'#21262d'}},
+        y:{ticks:{color:'#8b949e'},grid:{color:'#21262d'},beginAtZero:true,max:1}
+      },
+      plugins:{legend:{labels:{color:'#8b949e',boxWidth:12,font:{size:11}}}}
+    }
+  });
+}
+
+function initCharts(){
+  mmdChart      = makeChart('chart-mmd', 'MMD Score', '#58a6ff');
+  validityChart = makeChart('chart-validity', 'Validity Rate', '#3fb950');
+  nullChart     = makeMultiChart('chart-nulls', FEATURES, COLORS);
+}
+
+function push(chart, label, value){
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(value);
+  if(chart.data.labels.length > 60){ chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
+  chart.update('none');
+}
+
+function pushMulti(chart, label, values){
+  chart.data.labels.push(label);
+  values.forEach((v,i)=>{ chart.data.datasets[i].data.push(v); });
+  if(chart.data.labels.length > 60){
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(d=>d.data.shift());
+  }
+  chart.update('none');
+}
+
+function severityClass(sev){ return sev||'info'; }
+
+function updateAlerts(alerts){
+  const tbody = document.getElementById('alert-body');
+  if(!alerts||!alerts.length){
+    tbody.innerHTML='<tr><td colspan="6" class="empty">No alerts yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = alerts.slice(0,20).map(a=>{
+    const t = a.timestamp ? a.timestamp.slice(11,19) : '—';
+    const val = a.metric_value!=null ? a.metric_value.toFixed(4) : '—';
+    return `<tr>
+      <td style="color:var(--muted);white-space:nowrap">${t}</td>
+      <td style="font-family:monospace;font-size:12px">${a.alert_type||'—'}</td>
+      <td>${a.what||'—'}</td>
+      <td style="color:var(--muted)">${a.why||'—'}</td>
+      <td style="font-family:monospace">${val}</td>
+      <td><span class="badge ${severityClass(a.severity)}">${(a.severity||'info').toUpperCase()}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function setPhase(phase){
+  const el = document.getElementById('phase-label');
+  el.className = phase||'';
+  const labels = {warmup:'WARM-UP', calibrate:'CALIBRATING', monitoring:'MONITORING'};
+  el.textContent = labels[phase] || (phase||'—').toUpperCase();
+}
+
+async function refresh(){
+  try{
+    const resp = await fetch(STATE_URL+'?t='+Date.now());
+    if(!resp.ok) throw new Error('fetch failed');
+    const state = await resp.json();
+
+    const summary = state.summary||{};
+    const history = state.metrics_history||[];
+    const alerts  = state.alerts||[];
+
+    // KPIs
+    document.getElementById('kpi-batch').textContent = summary.last_batch??'—';
+    document.getElementById('kpi-alerts').textContent = summary.total_alerts??'0';
+
+    // New batches only
+    const newBatches = history.filter(h=>h.batch_id > lastBatchId);
+    newBatches.forEach(h=>{
+      const lbl = h.timestamp ? h.timestamp.slice(11,19) : String(h.batch_id);
+      if(h.mmd_score!=null) push(mmdChart, lbl, h.mmd_score);
+      if(h.validity_rate!=null) push(validityChart, lbl, h.validity_rate);
+      const nullVals = FEATURES.map(f=> h['null_rate_'+f]??0);
+      pushMulti(nullChart, lbl, nullVals);
+    });
+
+    if(newBatches.length){
+      lastBatchId = newBatches[newBatches.length-1].batch_id;
+      const last = newBatches[newBatches.length-1];
+      const mmd = last.mmd_score;
+      const kpiEl = document.getElementById('kpi-mmd');
+      kpiEl.textContent = mmd!=null ? mmd.toFixed(5) : '—';
+      const thr = last.mmd_threshold;
+      if(mmd!=null && thr!=null){
+        kpiEl.className = 'val '+(mmd>thr ? 'crit' : 'ok');
+      }
+      setPhase(last.phase);
+    }
+
+    updateAlerts(alerts);
+
+    document.getElementById('last-updated').textContent =
+      'Updated: '+(summary.last_updated||new Date().toISOString()).slice(11,19)+' UTC';
+    const badge = document.getElementById('status-badge');
+    badge.textContent='LIVE'; badge.className='';
+
+  } catch(e){
+    const badge = document.getElementById('status-badge');
+    badge.textContent='STALE'; badge.className='stale';
+  }
+}
+
+initCharts();
+refresh();
+setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>
+'''
+
+
+def generate_dashboard(output_path: str = None) -> Path:
+    """Write the dashboard HTML file and return its path."""
+    if output_path is None:
+        output_path = Path(__file__).parent.parent / "docs" / "dashboard.html"
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(DASHBOARD_HTML)
+    print(f"Dashboard written → {out}")
+    return out
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate or open the Data Quality Dashboard")
+    parser.add_argument("--output", default=None, help="Path to write dashboard.html")
+    parser.add_argument("--open", action="store_true", help="Open in browser after generating")
+    parser.add_argument(
+        "--state-path",
+        default=None,
+        help="Override the dashboard_state.json path embedded in the HTML",
+    )
+    args = parser.parse_args()
+
+    html = generate_dashboard(args.output)
+
+    if args.open:
+        webbrowser.open(f"file://{html.resolve()}")
+        print("Dashboard opened in browser. Ensure the Spark job is running to see live data.")
+
+
+if __name__ == "__main__":
+    main()

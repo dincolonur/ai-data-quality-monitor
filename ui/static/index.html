@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DQ Monitor — Control Panel</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--border:#30363d;--border2:#21262d;
+  --text:#e6edf3;--muted:#8b949e;--muted2:#6e7681;
+  --green:#3fb950;--yellow:#d29922;--orange:#f0883e;--red:#f85149;
+  --blue:#58a6ff;--purple:#bc8cff;--cyan:#39d353;
+  --green-bg:#1a2f1a;--yellow-bg:#2f2a1a;--orange-bg:#2f1f0f;--red-bg:#2f1414;--blue-bg:#141a2f;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── Header ── */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:28px;height:28px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;}
+.logo-text{font-size:15px;font-weight:600;}
+.logo-text span{color:var(--blue);}
+.header-right{display:flex;align-items:center;gap:16px;}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--muted2);}
+.conn-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green);}
+.conn-dot.err{background:var(--red);box-shadow:0 0 6px var(--red);}
+#conn-label{font-size:11px;color:var(--muted);}
+
+/* ── Status bar ── */
+.status-bar{background:var(--surface2);border-bottom:1px solid var(--border2);padding:0 20px;height:38px;display:flex;align-items:center;gap:28px;flex-shrink:0;}
+.status-chip{display:flex;align-items:center;gap:7px;font-size:12px;}
+.status-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--muted2);flex-shrink:0;}
+.status-chip .dot.up  {background:var(--green);}
+.status-chip .dot.down{background:var(--red);}
+.status-chip .dot.spin{background:var(--yellow);animation:pulse 1s infinite;}
+.chip-label{color:var(--muted);font-weight:500;}
+.chip-val{color:var(--text);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* ── Layout ── */
+.main{display:grid;grid-template-columns:280px 1fr 320px;gap:0;flex:1;overflow:hidden;}
+
+/* ── Sidebar (controls) ── */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:16px;}
+.section{margin-bottom:20px;}
+.section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;}
+
+/* Form elements */
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;margin-top:10px;}
+label:first-of-type{margin-top:0;}
+select,input[type=number],input[type=text]{
+  width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);padding:6px 10px;font-size:12px;outline:none;
+}
+select:focus,input:focus{border-color:var(--blue);}
+select option{background:var(--surface2);}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:opacity .15s,transform .1s;user-select:none;}
+.btn:active{transform:scale(.97);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-full{width:100%;}
+.btn-green {background:var(--green-bg); color:var(--green); border:1px solid var(--green);}
+.btn-red   {background:var(--red-bg);   color:var(--red);   border:1px solid var(--red);}
+.btn-blue  {background:var(--blue-bg);  color:var(--blue);  border:1px solid var(--blue);}
+.btn-yellow{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow);}
+.btn-ghost {background:transparent;     color:var(--muted); border:1px solid var(--border);}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;}
+.btn-sm{padding:5px 10px;font-size:11px;}
+
+.process-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;}
+.divider{border:none;border-top:1px solid var(--border2);margin:16px 0;}
+
+/* Process status pill */
+.proc-status{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;background:var(--surface2);border:1px solid var(--border2);}
+.proc-status.running{color:var(--green);border-color:var(--green);background:var(--green-bg);}
+.proc-status.stopped{color:var(--muted2);}
+
+/* ── Center (metrics) ── */
+.center{overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
+.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.kpi{background:var(--surface2);border-radius:8px;padding:12px;text-align:center;}
+.kpi-val{font-size:26px;font-weight:700;line-height:1;}
+.kpi-lbl{font-size:10px;color:var(--muted);margin-top:4px;}
+.kpi-val.ok{color:var(--green);} .kpi-val.warn{color:var(--yellow);} .kpi-val.crit{color:var(--red);}
+canvas{max-height:180px;}
+.phase-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid;}
+.phase-badge.warmup    {color:var(--blue);  border-color:var(--blue);  background:var(--blue-bg);}
+.phase-badge.calibrate {color:var(--yellow);border-color:var(--yellow);background:var(--yellow-bg);}
+.phase-badge.monitoring{color:var(--green); border-color:var(--green); background:var(--green-bg);}
+
+/* ── Right panel (alerts + logs) ── */
+.right-panel{border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab{flex:1;padding:10px;text-align:center;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+.tab-body{flex:1;overflow-y:auto;padding:12px;}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+
+/* Alert list */
+.alert-item{background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid var(--border);}
+.alert-item.low     {border-left-color:var(--green);}
+.alert-item.medium  {border-left-color:var(--yellow);}
+.alert-item.high    {border-left-color:var(--orange);}
+.alert-item.critical{border-left-color:var(--red);}
+.alert-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.alert-type{font-size:11px;font-family:monospace;font-weight:600;color:var(--text);}
+.alert-time{font-size:10px;color:var(--muted2);}
+.alert-what{font-size:12px;color:var(--text);margin-bottom:2px;}
+.alert-why{font-size:11px;color:var(--muted);}
+.badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;}
+.badge.low     {background:var(--green-bg); color:var(--green);}
+.badge.medium  {background:var(--yellow-bg);color:var(--yellow);}
+.badge.high    {background:var(--orange-bg);color:var(--orange);}
+.badge.critical{background:var(--red-bg);  color:var(--red);}
+.badge.info    {background:var(--blue-bg); color:var(--blue);}
+
+/* Log stream */
+#log-box{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px;font-family:'Courier New',monospace;font-size:11px;line-height:1.6;height:calc(100vh - 200px);overflow-y:auto;}
+.log-line{white-space:pre-wrap;word-break:break-all;}
+.log-line.producer{color:#58a6ff;}
+.log-line.spark   {color:#bc8cff;}
+.log-line.system  {color:var(--muted);}
+.log-line.warn    {color:var(--yellow);}
+.log-line.error   {color:var(--red);}
+
+.empty-state{text-align:center;color:var(--muted2);padding:30px 0;font-style:italic;font-size:12px;}
+
+/* Toast */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;}
+#toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">DQ</div>
+    <div class="logo-text">Data Quality <span>Monitor</span></div>
+  </div>
+  <div class="header-right">
+    <span id="conn-label">connecting…</span>
+    <div class="conn-dot" id="conn-dot"></div>
+  </div>
+</header>
+
+<!-- Status bar -->
+<div class="status-bar">
+  <div class="status-chip">
+    <div class="dot" id="dot-kafka"></div>
+    <span class="chip-label">Kafka</span>
+    <span class="chip-val" id="val-kafka">—</span>
+  </div>
+  <div class="status-chip">
+    <div class="dot" id="dot-producer"></div>
+    <span class="chip-label">Producer</span>
+    <span class="chip-val" id="val-producer">stopped</span>
+  </div>
+  <div class="status-chip">
+    <div class="dot" id="dot-spark"></div>
+    <span class="chip-label">Spark Job</span>
+    <span class="chip-val" id="val-spark">stopped</span>
+  </div>
+  <div class="status-chip" style="margin-left:auto;">
+    <span class="chip-label">Phase</span>
+    <span id="phase-badge" class="phase-badge">—</span>
+  </div>
+</div>
+
+<!-- Main layout -->
+<div class="main">
+
+  <!-- ── Left sidebar: controls ── -->
+  <div class="sidebar">
+
+    <!-- Producer -->
+    <div class="section">
+      <div class="section-title">Producer</div>
+      <label>Incident Mode</label>
+      <select id="sel-incident">
+        <option value="none">None (normal stream)</option>
+        <option value="null_spike">Null Spike</option>
+        <option value="range_violation">Range Violation</option>
+        <option value="schema_corruption">Schema Corruption</option>
+        <option value="distribution_drift">Distribution Drift</option>
+      </select>
+      <label>Event Interval (s)</label>
+      <input type="number" id="inp-interval" value="0.2" min="0.05" max="5" step="0.05"/>
+      <label>Incident After (events)</label>
+      <input type="number" id="inp-after" value="200" min="10" step="10"/>
+      <label>Incident Duration (s)</label>
+      <input type="number" id="inp-duration" value="60" min="10" step="10"/>
+      <label>Total Events</label>
+      <input type="number" id="inp-total" value="10000" min="100" step="100"/>
+      <div class="process-row" style="margin-top:12px;">
+        <button class="btn btn-green" id="btn-prod-start" onclick="startProducer()">▶ Start</button>
+        <button class="btn btn-red"   id="btn-prod-stop"  onclick="stopProducer()" disabled>■ Stop</button>
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <!-- Spark Job -->
+    <div class="section">
+      <div class="section-title">Spark Streaming Job</div>
+      <p style="color:var(--muted);font-size:11px;margin-bottom:10px;">Requires <code style="color:var(--blue)">spark-submit</code> on PATH and the Kafka package.</p>
+      <div class="process-row">
+        <button class="btn btn-green" id="btn-spark-start" onclick="startSpark()">▶ Start</button>
+        <button class="btn btn-red"   id="btn-spark-stop"  onclick="stopSpark()" disabled>■ Stop</button>
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <!-- Quick incidents -->
+    <div class="section">
+      <div class="section-title">Quick Incidents</div>
+      <p style="color:var(--muted);font-size:11px;margin-bottom:8px;">Starts producer immediately with selected incident.</p>
+      <div class="btn-grid">
+        <button class="btn btn-yellow btn-sm" onclick="quickIncident('null_spike')">Null Spike</button>
+        <button class="btn btn-yellow btn-sm" onclick="quickIncident('range_violation')">Range</button>
+        <button class="btn btn-yellow btn-sm" onclick="quickIncident('schema_corruption')">Schema</button>
+        <button class="btn btn-yellow btn-sm" onclick="quickIncident('distribution_drift')">Drift</button>
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <!-- Infrastructure -->
+    <div class="section">
+      <div class="section-title">Infrastructure</div>
+      <a href="http://localhost:8080" target="_blank" class="btn btn-ghost btn-full btn-sm" style="text-decoration:none;margin-bottom:6px;">↗ Kafka UI (8080)</a>
+      <a href="http://localhost:8081" target="_blank" class="btn btn-ghost btn-full btn-sm" style="text-decoration:none;">↗ Spark UI (8081)</a>
+    </div>
+
+    <hr class="divider"/>
+
+    <!-- Config quick edit -->
+    <div class="section">
+      <div class="section-title">Hysteresis Config</div>
+      <label>Required Consecutive</label>
+      <input type="number" id="cfg-consecutive" value="2" min="1" max="10"/>
+      <label>Cooldown (s)</label>
+      <input type="number" id="cfg-cooldown" value="120" min="10" step="10"/>
+      <button class="btn btn-blue btn-full btn-sm" style="margin-top:8px;" onclick="saveConfig()">Save Config</button>
+    </div>
+
+  </div>
+
+  <!-- ── Center: metrics ── -->
+  <div class="center">
+
+    <!-- KPIs -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Live Metrics</span>
+        <span style="font-size:11px;color:var(--muted2)" id="last-updated">—</span>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-val" id="kpi-batch">—</div><div class="kpi-lbl">Last Batch</div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-mmd">—</div><div class="kpi-lbl">MMD Score</div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-validity">—</div><div class="kpi-lbl">Validity Rate</div></div>
+      </div>
+    </div>
+
+    <!-- MMD chart -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">RFF-MMD Drift Score</span></div>
+      <canvas id="chart-mmd"></canvas>
+    </div>
+
+    <!-- Null rates -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Feature Null Rates</span></div>
+      <canvas id="chart-nulls"></canvas>
+    </div>
+
+    <!-- Validity -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Batch Validity Rate</span></div>
+      <canvas id="chart-validity"></canvas>
+    </div>
+
+  </div>
+
+  <!-- ── Right panel: alerts + logs ── -->
+  <div class="right-panel">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('alerts')">Alerts</div>
+      <div class="tab"        onclick="switchTab('logs')">Live Logs</div>
+    </div>
+    <div class="tab-body">
+
+      <div class="tab-pane active" id="pane-alerts">
+        <div id="alert-list"><p class="empty-state">No alerts yet</p></div>
+      </div>
+
+      <div class="tab-pane" id="pane-logs">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:11px;color:var(--muted)">Streaming from producer &amp; spark processes</span>
+          <button class="btn btn-ghost btn-sm" onclick="clearLogs()">Clear</button>
+        </div>
+        <div id="log-box"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<div id="toast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const API = '';
+let mmdChart, nullChart, validityChart;
+let lastBatch = -1;
+const FEATURES = ['age','purchase_amount','session_duration','page_views'];
+const F_COLORS = ['#58a6ff','#3fb950','#f0883e','#bc8cff'];
+let logCount = 0;
+const MAX_LOGS = 500;
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, color='var(--text)'){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.color = color;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2500);
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const names=['alerts','logs'];
+    t.classList.toggle('active', names[i]===name);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p=>{
+    p.classList.toggle('active', p.id==='pane-'+name);
+  });
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+function mkChart(id, label, color, yMax=null){
+  const opts = {
+    animation:false,
+    scales:{
+      x:{ticks:{color:'#6e7681',maxTicksLimit:6,font:{size:10}},grid:{color:'#21262d'}},
+      y:{ticks:{color:'#6e7681',font:{size:10}},grid:{color:'#21262d'},beginAtZero:true}
+    },
+    plugins:{legend:{display:false}}
+  };
+  if(yMax) opts.scales.y.max = yMax;
+  return new Chart(document.getElementById(id).getContext('2d'),{
+    type:'line',
+    data:{labels:[],datasets:[{label,data:[],borderColor:color,backgroundColor:color+'22',
+          borderWidth:2,pointRadius:1.5,tension:0.3,fill:true}]},
+    options:opts
+  });
+}
+function mkMultiChart(id){
+  return new Chart(document.getElementById(id).getContext('2d'),{
+    type:'line',
+    data:{labels:[],datasets:FEATURES.map((f,i)=>({
+      label:f,data:[],borderColor:F_COLORS[i],backgroundColor:F_COLORS[i]+'22',
+      borderWidth:1.5,pointRadius:1.5,tension:0.3,fill:false
+    }))},
+    options:{
+      animation:false,
+      scales:{
+        x:{ticks:{color:'#6e7681',maxTicksLimit:6,font:{size:10}},grid:{color:'#21262d'}},
+        y:{ticks:{color:'#6e7681',font:{size:10}},grid:{color:'#21262d'},beginAtZero:true,max:1}
+      },
+      plugins:{legend:{labels:{color:'#8b949e',boxWidth:10,font:{size:10}}}}
+    }
+  });
+}
+function pushChart(chart, label, value){
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(value);
+  if(chart.data.labels.length>80){chart.data.labels.shift();chart.data.datasets[0].data.shift();}
+  chart.update('none');
+}
+function pushMulti(chart, label, values){
+  chart.data.labels.push(label);
+  values.forEach((v,i)=>chart.data.datasets[i].data.push(v));
+  if(chart.data.labels.length>80){
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(d=>d.data.shift());
+  }
+  chart.update('none');
+}
+
+// ── Status polling ────────────────────────────────────────────────────────────
+async function pollStatus(){
+  try{
+    const r = await fetch('/api/status');
+    const s = await r.json();
+    // Connection indicator
+    document.getElementById('conn-dot').className = 'conn-dot ok';
+    document.getElementById('conn-label').textContent = 'connected';
+
+    // Kafka
+    const kUp = s.kafka.reachable;
+    document.getElementById('dot-kafka').className = 'dot '+(kUp?'up':'down');
+    document.getElementById('val-kafka').textContent = kUp ? s.kafka.bootstrap_servers : 'unreachable';
+
+    // Producer
+    const pRun = s.producer.running;
+    document.getElementById('dot-producer').className = 'dot '+(pRun?'up spin':'down');
+    document.getElementById('val-producer').textContent = pRun ? `PID ${s.producer.pid}` : 'stopped';
+    document.getElementById('btn-prod-start').disabled = pRun;
+    document.getElementById('btn-prod-stop').disabled  = !pRun;
+
+    // Spark
+    const sRun = s.spark.running;
+    document.getElementById('dot-spark').className = 'dot '+(sRun?'up spin':'down');
+    document.getElementById('val-spark').textContent = sRun ? `PID ${s.spark.pid}` : 'stopped';
+    document.getElementById('btn-spark-start').disabled = sRun;
+    document.getElementById('btn-spark-stop').disabled  = !sRun;
+  } catch(e){
+    document.getElementById('conn-dot').className = 'conn-dot err';
+    document.getElementById('conn-label').textContent = 'disconnected';
+  }
+}
+
+// ── Metrics polling ───────────────────────────────────────────────────────────
+async function pollMetrics(){
+  try{
+    const r = await fetch('/api/metrics');
+    const state = await r.json();
+    const history = state.metrics_history || [];
+    const summary = state.summary || {};
+
+    document.getElementById('kpi-batch').textContent = summary.last_batch ?? '—';
+    if(summary.last_updated)
+      document.getElementById('last-updated').textContent = 'Updated '+summary.last_updated.slice(11,19)+' UTC';
+
+    const newBatches = history.filter(h=>h.batch_id>lastBatch);
+    newBatches.forEach(h=>{
+      const lbl = (h.timestamp||'').slice(11,19) || String(h.batch_id);
+      if(h.mmd_score!=null)     pushChart(mmdChart,      lbl, h.mmd_score);
+      if(h.validity_rate!=null) pushChart(validityChart,  lbl, h.validity_rate);
+      pushMulti(nullChart, lbl, FEATURES.map(f=>h['null_rate_'+f]??0));
+    });
+
+    if(newBatches.length){
+      lastBatch = newBatches[newBatches.length-1].batch_id;
+      const last = newBatches[newBatches.length-1];
+
+      // MMD KPI
+      const mmd = last.mmd_score, thr = last.mmd_threshold;
+      const mmdEl = document.getElementById('kpi-mmd');
+      mmdEl.textContent = mmd!=null ? mmd.toFixed(5) : '—';
+      mmdEl.className = 'kpi-val '+(mmd!=null&&thr!=null?(mmd>thr?'crit':'ok'):'');
+
+      // Validity KPI
+      const val = last.validity_rate;
+      const valEl = document.getElementById('kpi-validity');
+      valEl.textContent = val!=null ? (val*100).toFixed(1)+'%' : '—';
+      valEl.className = 'kpi-val '+(val!=null?(val>0.95?'ok':val>0.8?'warn':'crit'):'');
+
+      // Phase badge
+      const phase = last.phase;
+      const pb = document.getElementById('phase-badge');
+      pb.className = 'phase-badge '+(phase||'');
+      pb.textContent = {warmup:'WARM-UP',calibrate:'CALIBRATING',monitoring:'MONITORING'}[phase]||(phase||'—').toUpperCase();
+    }
+  } catch(e){}
+}
+
+// ── Alerts polling ────────────────────────────────────────────────────────────
+async function pollAlerts(){
+  try{
+    const r = await fetch('/api/alerts?limit=30');
+    const alerts = await r.json();
+    const el = document.getElementById('alert-list');
+    if(!alerts.length){ el.innerHTML='<p class="empty-state">No alerts yet</p>'; return; }
+    el.innerHTML = alerts.map(a=>{
+      const sev = a.severity||'info';
+      const t = (a.timestamp||'').slice(11,19);
+      const val = a.metric_value!=null ? ` <span style="color:var(--muted);font-family:monospace">${Number(a.metric_value).toFixed(4)}</span>` : '';
+      return `<div class="alert-item ${sev}">
+        <div class="alert-head">
+          <span class="alert-type">${a.alert_type||'—'}</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span class="badge ${sev}">${sev.toUpperCase()}</span>
+            <span class="alert-time">${t}</span>
+          </div>
+        </div>
+        <div class="alert-what">${a.what||''}${val}</div>
+        <div class="alert-why">${a.why||''}</div>
+      </div>`;
+    }).join('');
+  } catch(e){}
+}
+
+// ── Log stream (SSE) ──────────────────────────────────────────────────────────
+function startLogStream(){
+  const es = new EventSource('/api/logs/stream');
+  es.onmessage = function(e){
+    const data = JSON.parse(e.data);
+    const box  = document.getElementById('log-box');
+    const line = document.createElement('div');
+    line.className = 'log-line';
+
+    const src  = (data.source||'').toLowerCase();
+    const text = data.line || data.line || '';
+    const low  = text.toLowerCase();
+
+    if(src==='producer') line.classList.add('producer');
+    else if(src==='spark') line.classList.add('spark');
+    else if(src==='system') line.classList.add('system');
+    if(low.includes('warning')||low.includes('warn')||low.includes('alert')) line.classList.add('warn');
+    if(low.includes('error')||low.includes('critical')) line.classList.add('error');
+
+    const ts = data.ts ? `<span style="color:var(--muted2)">${data.ts}</span> ` : '';
+    const badge = src ? `<span style="color:var(--muted2)">[${src}]</span> ` : '';
+    line.innerHTML = ts + badge + escHtml(text);
+    box.appendChild(line);
+
+    logCount++;
+    while(logCount > MAX_LOGS && box.firstChild){ box.removeChild(box.firstChild); logCount--; }
+    box.scrollTop = box.scrollHeight;
+  };
+  es.onerror = function(){ setTimeout(startLogStream, 3000); };
+}
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function clearLogs(){ document.getElementById('log-box').innerHTML=''; logCount=0; }
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+async function startProducer(){
+  const params = {
+    incident:          document.getElementById('sel-incident').value,
+    interval:          parseFloat(document.getElementById('inp-interval').value),
+    incident_after:    parseInt(document.getElementById('inp-after').value),
+    incident_duration: parseFloat(document.getElementById('inp-duration').value),
+    total_events:      parseInt(document.getElementById('inp-total').value),
+  };
+  const r = await fetch('/api/producer/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
+  const d = await r.json();
+  toast(d.status==='started' ? '✓ Producer started' : d.status, 'var(--green)');
+  pollStatus();
+}
+async function stopProducer(){
+  await fetch('/api/producer/stop',{method:'POST'});
+  toast('Producer stopped','var(--muted)');
+  pollStatus();
+}
+async function startSpark(){
+  const r = await fetch('/api/spark/start',{method:'POST'});
+  const d = await r.json();
+  toast(d.status==='started' ? '✓ Spark job started' : d.status, 'var(--green)');
+  pollStatus();
+}
+async function stopSpark(){
+  await fetch('/api/spark/stop',{method:'POST'});
+  toast('Spark job stopped','var(--muted)');
+  pollStatus();
+}
+async function quickIncident(type){
+  if(document.getElementById('btn-prod-start').disabled){
+    toast('Stop current producer first','var(--red)'); return;
+  }
+  document.getElementById('sel-incident').value = type;
+  document.getElementById('inp-after').value    = '50';
+  document.getElementById('inp-duration').value = '60';
+  await startProducer();
+  toast(`✓ ${type} incident injected`,'var(--yellow)');
+}
+async function saveConfig(){
+  const patch = {
+    alerts: { hysteresis: {
+      required_consecutive: parseInt(document.getElementById('cfg-consecutive').value),
+      cooldown_seconds:     parseInt(document.getElementById('cfg-cooldown').value),
+    }}
+  };
+  const r = await fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+  const d = await r.json();
+  toast(d.status==='saved' ? '✓ Config saved' : 'Error saving','var(--green)');
+}
+
+// Load current config into sidebar fields
+async function loadConfig(){
+  try{
+    const r = await fetch('/api/config');
+    const cfg = await r.json();
+    const h = cfg?.alerts?.hysteresis || {};
+    if(h.required_consecutive) document.getElementById('cfg-consecutive').value = h.required_consecutive;
+    if(h.cooldown_seconds)     document.getElementById('cfg-cooldown').value     = h.cooldown_seconds;
+  } catch(e){}
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+mmdChart      = mkChart('chart-mmd',      'MMD Score',     '#58a6ff');
+validityChart = mkChart('chart-validity', 'Validity Rate', '#3fb950', 1);
+nullChart     = mkMultiChart('chart-nulls');
+
+pollStatus();
+pollMetrics();
+pollAlerts();
+loadConfig();
+startLogStream();
+
+setInterval(pollStatus,  3000);
+setInterval(pollMetrics, 5000);
+setInterval(pollAlerts,  7000);
+</script>
+</body>
+</html>

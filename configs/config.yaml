@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# AI Data Quality Monitor — Configuration
+# AI Data Quality Monitor — Full Configuration
 # ──────────────────────────────────────────────────────────────────────────────
 
 app_name: DataQualityMonitor
@@ -8,19 +8,28 @@ app_name: DataQualityMonitor
 kafka:
   bootstrap_servers: "localhost:9092"
   topic: "ml-features"
-  starting_offsets: "latest"        # Use "earliest" to reprocess from start
+  starting_offsets: "latest"
   consumer_group: "dq-monitor-group"
 
 # ── Spark ──────────────────────────────────────────────────────────────────────
 spark:
-  trigger_interval: "30 seconds"    # Micro-batch interval
+  trigger_interval: "30 seconds"
   checkpoint_location: "/tmp/spark_checkpoints/dq_monitor"
   shuffle_partitions: 4
   log_level: "WARN"
 
-# ── Feature Validation Rules ───────────────────────────────────────────────────
+# ── Warm-up & Calibration ──────────────────────────────────────────────────────
+# Phase 1 WARMUP:     collect baseline data for window_batches micro-batches
+# Phase 2 CALIBRATE:  score under normal conditions for calibration_batches
+# Phase 3 MONITORING: full drift detection active with calibrated threshold
+warmup:
+  window_batches: 5
+  calibration_batches: 5
+  calibration_percentile: 99.0     # threshold = 99th percentile of calibration scores
+
+# ── Feature Validation ─────────────────────────────────────────────────────────
 validation:
-  null_alert_threshold: 0.05        # Alert if null rate > 5%
+  null_alert_threshold: 0.05
   features:
     user_id:
       nullable: false
@@ -31,21 +40,15 @@ validation:
     purchase_amount:
       nullable: false
       min: 0.0
-      max: null                     # No upper bound
     session_duration:
       nullable: false
       min: 0
-      max: null
     page_views:
       nullable: false
       min: 0
-      max: null
     device_type:
       nullable: false
-      allowed_values:
-        - "mobile"
-        - "desktop"
-        - "tablet"
+      allowed_values: ["mobile", "desktop", "tablet"]
     timestamp:
       nullable: false
       min: 0
@@ -53,48 +56,81 @@ validation:
 # ── Drift Detection ────────────────────────────────────────────────────────────
 drift:
   enabled: true
-  baseline_window_batches: 5       # Number of batches used to build baseline
   baseline_save_path: "/tmp/dq_baseline.json"
 
-  # Kolmogorov-Smirnov test
+  # RFF-MMD (primary detector)
+  rff_mmd:
+    n_components: 200              # number of random Fourier features
+    sigma: null                    # null = auto (median heuristic)
+
+  # Kolmogorov-Smirnov (complementary)
   ks:
     significance_level: 0.05
 
-  # Population Stability Index
+  # Population Stability Index (complementary)
   psi:
     warning_threshold: 0.1
     alert_threshold: 0.2
     n_bins: 10
 
-  # Null rate drift
+  # Null rate drift (complementary)
   null_rate:
-    drift_threshold: 0.05          # Alert if null rate changes by > 5pp
+    drift_threshold: 0.05
 
-  # Chi-squared test for categorical features
+  # Chi-squared for categorical features (complementary)
   chi_squared:
     significance_level: 0.05
 
-  numeric_features:
-    - age
-    - purchase_amount
-    - session_duration
-    - page_views
-
-  categorical_features:
-    - device_type
+  numeric_features:     [age, purchase_amount, session_duration, page_views]
+  categorical_features: [device_type]
 
 # ── Alerting ───────────────────────────────────────────────────────────────────
 alerts:
   enabled: true
-  log_level: "WARNING"
-  slack_webhook_url: null          # Set to your Slack webhook URL to enable
+
+  # Hysteresis + backoff — prevents alert flapping
+  hysteresis:
+    required_consecutive: 2        # require N bad windows before firing
+    cooldown_seconds: 120          # minimum seconds between same-key alerts
+
+  # Persistent JSONL log
+  log_file: "logs/alerts.jsonl"
+
+  # Live dashboard state file (read by docs/dashboard.html)
+  dashboard_state_path: "docs/dashboard_state.json"
+
+  # Slack — set webhook URL or leave null to disable
+  slack_webhook_url: null
   # slack_webhook_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 
-# ── Optional Integrations ──────────────────────────────────────────────────────
-# feast:
-#   enabled: false
-#   feature_store_yaml: "feature_store.yaml"
+  # Email — set enabled: true and fill credentials to activate
+  email:
+    enabled: false
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    use_tls: true
+    sender: "monitor@example.com"
+    username: "monitor@example.com"
+    # password: set via env var ALERT_EMAIL_PASSWORD (never hardcode)
+    recipients:
+      - "oncall@example.com"
 
+# ── Feature Store (Option A) ───────────────────────────────────────────────────
+feature_store:
+  enabled: false
+  store_path: "feature_store/registry.json"
+  # feast:
+  #   feature_store_yaml: "feature_store.yaml"
+
+# ── Model Monitoring (Option D) ────────────────────────────────────────────────
+model_monitoring:
+  enabled: false
+  prediction_topic: "ml-predictions"
+  label_topic: "ml-labels"
+  performance_window_batches: 10
+  prediction_drift_threshold: 0.05
+
+# ── MLflow (optional) ──────────────────────────────────────────────────────────
 # mlflow:
 #   enabled: false
 #   tracking_uri: "http://localhost:5000"
