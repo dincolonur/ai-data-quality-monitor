@@ -28,10 +28,15 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
     networks:
       - monitor-net
 
-  # ── Kafka UI (optional, for topic inspection) ────────────────────────────────
+  # ── Kafka UI ─────────────────────────────────────────────────────────────────
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -50,6 +55,7 @@ services:
     image: apache/spark:3.5.0
     container_name: spark-master
     command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+    platform: linux/amd64
     environment:
       - SPARK_NO_DAEMONIZE=true
     ports:
@@ -62,6 +68,7 @@ services:
   spark-worker:
     image: apache/spark:3.5.0
     container_name: spark-worker
+    platform: linux/amd64
     command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
     depends_on:
       - spark-master
@@ -71,6 +78,29 @@ services:
       - SPARK_WORKER_CORES=2
     networks:
       - monitor-net
+
+  # ── Control Panel (FastAPI + Spark-submit + Producer) ────────────────────────
+  control-panel:
+    build: .
+    container_name: control-panel
+    ports:
+      - "7070:7070"
+    volumes:
+      - ./logs:/app/logs          # persist alerts.jsonl on host
+      - ./docs:/app/docs          # persist dashboard_state.json on host
+      - ./configs:/app/configs    # allow live config edits from host
+    environment:
+      # Inside Docker, Kafka is reachable at kafka:29092
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      # Run Spark locally inside this container (driver + executors in one JVM)
+      # Change to spark://spark-master:7077 to use the cluster instead
+      - SPARK_MASTER=local[2]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - monitor-net
+    restart: unless-stopped
 
 networks:
   monitor-net:
