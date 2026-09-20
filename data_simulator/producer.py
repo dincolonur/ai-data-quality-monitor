@@ -19,6 +19,7 @@ Incident modes:
 
 import json
 import logging
+import os
 import random
 import time
 import argparse
@@ -270,9 +271,11 @@ def run(
 
 def parse_args():
     cfg = load_config()
+    # KAFKA_BOOTSTRAP_SERVERS env var overrides config (used inside Docker)
+    default_bs = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", cfg["kafka"]["bootstrap_servers"])
     p = argparse.ArgumentParser(description="ML Feature Stream Producer with incident injection")
     p.add_argument("--topic",             default=cfg["kafka"]["topic"])
-    p.add_argument("--bootstrap-servers", default=cfg["kafka"]["bootstrap_servers"])
+    p.add_argument("--bootstrap-servers", default=default_bs)
     p.add_argument("--interval",  type=float, default=0.2,
                    help="Seconds between events")
     p.add_argument("--incident",

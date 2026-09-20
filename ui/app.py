@@ -67,17 +67,25 @@ def _append_log(source: str, line: str) -> None:
 # ════════════════════════════════════════════════════════════════════════════════
 
 class ManagedProcess:
-    """Wraps a subprocess.Popen, pipes stdout/stderr to LOG_BUFFER."""
+    """Wraps a subprocess.Popen, pipes stdout/stderr to LOG_BUFFER.
 
-    def __init__(self, name: str, cmd: list[str], cwd: Path = ROOT):
-        self.name   = name
-        self.cmd    = cmd
-        self.cwd    = cwd
+    When auto_restart=True the process is restarted automatically on unexpected
+    exit (non-zero return code), with an exponential back-off up to 60 seconds.
+    Call stop() to permanently cancel it.
+    """
+
+    def __init__(self, name: str, cmd: list[str], cwd: Path = ROOT, auto_restart: bool = False):
+        self.name         = name
+        self.cmd          = cmd
+        self.cwd          = cwd
+        self.auto_restart = auto_restart
         self._proc: Optional[subprocess.Popen] = None
-        self._thread = None
+        self._thread      = None
+        self._stopped     = False   # set by stop() to prevent restart loops
 
     def start(self) -> str | None:
         """Start the process. Returns an error string on failure, None on success."""
+        self._stopped = False
         if self.is_running():
             return None
         _append_log("system", f"[{self.name}] launching: {' '.join(self.cmd)}")
@@ -105,7 +113,7 @@ class ManagedProcess:
         return None
 
     def _drain(self) -> None:
-        """Read process output line by line into the log buffer."""
+        """Read process output line by line, then handle exit / auto-restart."""
         try:
             for line in self._proc.stdout:
                 _append_log(self.name, line)
@@ -114,7 +122,17 @@ class ManagedProcess:
         rc = self._proc.poll()
         _append_log("system", f"[{self.name}] process exited (returncode={rc})")
 
+        if self.auto_restart and not self._stopped and rc != 0:
+            delay = 5
+            _append_log("system", f"[{self.name}] unexpected exit — restarting in {delay}s…")
+            time.sleep(delay)
+            if not self._stopped:
+                err = self.start()
+                if err:
+                    _append_log("system", f"[{self.name}] auto-restart failed: {err}")
+
     def stop(self) -> None:
+        self._stopped = True
         if not self._proc:
             return
         try:
@@ -136,8 +154,9 @@ class ManagedProcess:
 
 
 # Singleton process handles
-_producer = ManagedProcess("producer", [])
-_spark    = ManagedProcess("spark",    [])
+# Spark auto-restarts on unexpected exit; producer does not (incidents are intentional stops)
+_producer = ManagedProcess("producer", [],  auto_restart=False)
+_spark    = ManagedProcess("spark",    [],  auto_restart=True)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -229,22 +248,43 @@ async def producer_stop():
 
 # ── Spark Job ──────────────────────────────────────────────────────────────────
 
-SPARK_PKG = "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.0"
+def _spark_pkg() -> str:
+    """Return the Kafka connector package string matching the installed PySpark version.
+
+    PySpark 3.x → Scala 2.12 → spark-sql-kafka-0-10_2.12:<version>
+    PySpark 4.x → Scala 2.13 → spark-sql-kafka-0-10_2.13:<version>
+    """
+    try:
+        import pyspark
+        version = pyspark.__version__  # e.g. "3.5.3" or "4.0.0"
+    except ImportError:
+        version = "3.5.3"
+    major = int(version.split(".")[0])
+    scala = "2.13" if major >= 4 else "2.12"
+    return f"org.apache.spark:spark-sql-kafka-0-10_{scala}:{version}"
 
 
 def _find_spark_submit() -> str:
-    """Locate spark-submit: PATH → SPARK_HOME env → common install dirs."""
-    # 1. Already on PATH
+    """Locate spark-submit: pyspark bundle → PATH → SPARK_HOME → common dirs."""
+    # 1. PySpark's bundled spark-submit (works when pip install pyspark is used)
+    try:
+        import pyspark
+        candidate = os.path.join(os.path.dirname(pyspark.__file__), "bin", "spark-submit")
+        if os.path.isfile(candidate):
+            return candidate
+    except ImportError:
+        pass
+    # 2. Already on PATH
     found = shutil.which("spark-submit")
     if found:
         return found
-    # 2. SPARK_HOME env var
+    # 3. SPARK_HOME env var
     spark_home = os.environ.get("SPARK_HOME")
     if spark_home:
         candidate = os.path.join(spark_home, "bin", "spark-submit")
         if os.path.isfile(candidate):
             return candidate
-    # 3. Common macOS install locations
+    # 4. Common macOS/Linux install locations
     patterns = [
         os.path.expanduser("~/Documents/server/spark-*/bin/spark-submit"),
         os.path.expanduser("~/spark-*/bin/spark-submit"),
@@ -252,7 +292,7 @@ def _find_spark_submit() -> str:
         "/usr/local/bin/spark-submit",
     ]
     for pattern in patterns:
-        matches = sorted(glob.glob(pattern), reverse=True)  # newest first
+        matches = sorted(glob.glob(pattern), reverse=True)
         if matches:
             return matches[0]
     return "spark-submit"  # fallback — will raise FileNotFoundError if missing
@@ -264,11 +304,16 @@ async def spark_start():
         return {"status": "already_running", "pid": _spark.pid}
 
     spark_submit = _find_spark_submit()
-    _append_log("system", f"[spark] using spark-submit: {spark_submit}")
+    pkg = _spark_pkg()
+    master = os.environ.get("SPARK_MASTER", "local[2]")
+    _append_log("system", f"[spark] spark-submit: {spark_submit}")
+    _append_log("system", f"[spark] master={master}  package={pkg}")
     cmd = [
         spark_submit,
-        "--packages", SPARK_PKG,
+        "--master", master,
+        "--packages", pkg,
         "--conf", "spark.sql.shuffle.partitions=4",
+        "--conf", "spark.ui.port=4040",
         str(ROOT / "streaming_job" / "spark_job.py"),
     ]
     _spark.cmd = cmd
@@ -314,6 +359,14 @@ async def get_alerts(limit: int = 50):
         if len(parsed) >= limit:
             break
     return parsed
+
+
+@app.delete("/api/alerts")
+async def clear_alerts():
+    """Truncate the alerts log file."""
+    if ALERTS_PATH.exists():
+        ALERTS_PATH.write_text("")
+    return {"status": "cleared"}
 
 
 # ── Config ─────────────────────────────────────────────────────────────────────

@@ -147,6 +147,8 @@ canvas{max-height:180px;}
     <div class="logo-text">Data Quality <span>Monitor</span></div>
   </div>
   <div class="header-right">
+    <span style="font-size:11px;color:var(--muted2)" id="refresh-label">auto-refresh on</span>
+    <button class="btn btn-ghost btn-sm" id="btn-refresh" onclick="manualRefresh()" title="Refresh all panels now">↻ Refresh</button>
     <span id="conn-label">connecting…</span>
     <div class="conn-dot" id="conn-dot"></div>
   </div>
@@ -273,13 +275,19 @@ canvas{max-height:180px;}
 
     <!-- MMD chart -->
     <div class="card">
-      <div class="card-header"><span class="card-title">RFF-MMD Drift Score</span></div>
+      <div class="card-header">
+        <span class="card-title">RFF-MMD Drift Score</span>
+        <button class="btn btn-ghost btn-sm" onclick="clearChart('mmd')">✕ Clear</button>
+      </div>
       <canvas id="chart-mmd"></canvas>
     </div>
 
     <!-- Null rates -->
     <div class="card">
-      <div class="card-header"><span class="card-title">Feature Null Rates</span></div>
+      <div class="card-header">
+        <span class="card-title">Feature Null Rates</span>
+        <button class="btn btn-ghost btn-sm" onclick="clearChart('nulls')">✕ Clear</button>
+      </div>
       <canvas id="chart-nulls"></canvas>
     </div>
 
@@ -300,6 +308,13 @@ canvas{max-height:180px;}
     <div class="tab-body">
 
       <div class="tab-pane active" id="pane-alerts">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:11px;color:var(--muted)" id="alert-count">—</span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost btn-sm" onclick="pollAlerts()">↻ Refresh</button>
+            <button class="btn btn-red btn-sm" onclick="clearAlerts()">✕ Clear</button>
+          </div>
+        </div>
         <div id="alert-list"><p class="empty-state">No alerts yet</p></div>
       </div>
 
@@ -328,6 +343,26 @@ const F_COLORS = ['#58a6ff','#3fb950','#f0883e','#bc8cff'];
 let logCount = 0;
 const MAX_LOGS = 500;
 
+// ── Timezone helper ────────────────────────────────────────────────────────────
+// All timestamps from the server are UTC ISO strings.
+// Display them in the user's local PDT/PST (America/Los_Angeles).
+const TZ = 'America/Los_Angeles';
+function fmtTime(isoStr){
+  if(!isoStr) return '—';
+  try{
+    // Treat bare strings without Z as UTC
+    const d = new Date(isoStr.includes('Z')||isoStr.includes('+') ? isoStr : isoStr+'Z');
+    return d.toLocaleTimeString('en-US',{timeZone:TZ,hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  }catch(e){ return isoStr.slice(11,19)||'—'; }
+}
+function fmtDateTime(isoStr){
+  if(!isoStr) return '—';
+  try{
+    const d = new Date(isoStr.includes('Z')||isoStr.includes('+') ? isoStr : isoStr+'Z');
+    return d.toLocaleString('en-US',{timeZone:TZ,month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  }catch(e){ return isoStr.slice(0,19)||'—'; }
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function toast(msg, color='var(--text)'){
   const el = document.getElementById('toast');
@@ -348,20 +383,39 @@ function switchTab(name){
 }
 
 // ── Charts ────────────────────────────────────────────────────────────────────
-function mkChart(id, label, color, yMax=null){
+function mkChart(id, label, color, yMax=null, withThreshold=false){
+  const datasets = [{
+    label, data:[], borderColor:color, backgroundColor:color+'22',
+    borderWidth:2, pointRadius:1.5, tension:0.3, fill:true
+  }];
+  if(withThreshold){
+    datasets.push({
+      label:'Threshold',
+      data:[],
+      borderColor:'#f85149',
+      backgroundColor:'transparent',
+      borderWidth:1.5,
+      borderDash:[6,3],
+      pointRadius:0,
+      tension:0,
+      fill:false,
+    });
+  }
   const opts = {
     animation:false,
     scales:{
       x:{ticks:{color:'#6e7681',maxTicksLimit:6,font:{size:10}},grid:{color:'#21262d'}},
       y:{ticks:{color:'#6e7681',font:{size:10}},grid:{color:'#21262d'},beginAtZero:true}
     },
-    plugins:{legend:{display:false}}
+    plugins:{legend:{
+      display: withThreshold,
+      labels:{color:'#8b949e',boxWidth:10,font:{size:10}}
+    }}
   };
   if(yMax) opts.scales.y.max = yMax;
   return new Chart(document.getElementById(id).getContext('2d'),{
     type:'line',
-    data:{labels:[],datasets:[{label,data:[],borderColor:color,backgroundColor:color+'22',
-          borderWidth:2,pointRadius:1.5,tension:0.3,fill:true}]},
+    data:{labels:[],datasets},
     options:opts
   });
 }
@@ -382,10 +436,16 @@ function mkMultiChart(id){
     }
   });
 }
-function pushChart(chart, label, value){
+function pushChart(chart, label, value, threshold=null){
   chart.data.labels.push(label);
   chart.data.datasets[0].data.push(value);
-  if(chart.data.labels.length>80){chart.data.labels.shift();chart.data.datasets[0].data.shift();}
+  if(chart.data.datasets[1] !== undefined){
+    chart.data.datasets[1].data.push(threshold);
+  }
+  if(chart.data.labels.length>80){
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(d=>d.data.shift());
+  }
   chart.update('none');
 }
 function pushMulti(chart, label, values){
@@ -401,7 +461,7 @@ function pushMulti(chart, label, values){
 // ── Status polling ────────────────────────────────────────────────────────────
 async function pollStatus(){
   try{
-    const r = await fetch('/api/status');
+    const r = await fetch('/api/status', {cache:'no-store'});
     const s = await r.json();
     // Connection indicator
     document.getElementById('conn-dot').className = 'conn-dot ok';
@@ -434,19 +494,19 @@ async function pollStatus(){
 // ── Metrics polling ───────────────────────────────────────────────────────────
 async function pollMetrics(){
   try{
-    const r = await fetch('/api/metrics');
+    const r = await fetch('/api/metrics', {cache:'no-store'});
     const state = await r.json();
     const history = state.metrics_history || [];
     const summary = state.summary || {};
 
     document.getElementById('kpi-batch').textContent = summary.last_batch ?? '—';
     if(summary.last_updated)
-      document.getElementById('last-updated').textContent = 'Updated '+summary.last_updated.slice(11,19)+' UTC';
+      document.getElementById('last-updated').textContent = 'Updated '+fmtTime(summary.last_updated)+' PDT';
 
     const newBatches = history.filter(h=>h.batch_id>lastBatch);
     newBatches.forEach(h=>{
-      const lbl = (h.timestamp||'').slice(11,19) || String(h.batch_id);
-      if(h.mmd_score!=null)     pushChart(mmdChart,      lbl, h.mmd_score);
+      const lbl = h.timestamp ? fmtTime(h.timestamp) : String(h.batch_id);
+      if(h.mmd_score!=null)     pushChart(mmdChart, lbl, h.mmd_score, h.mmd_threshold ?? null);
       if(h.validity_rate!=null) pushChart(validityChart,  lbl, h.validity_rate);
       pushMulti(nullChart, lbl, FEATURES.map(f=>h['null_rate_'+f]??0));
     });
@@ -476,16 +536,43 @@ async function pollMetrics(){
   } catch(e){}
 }
 
+// ── Manual refresh ────────────────────────────────────────────────────────────
+function clearCharts(){
+  [mmdChart, validityChart].forEach(c=>{
+    c.data.labels = [];
+    c.data.datasets[0].data = [];
+    c.update('none');
+  });
+  nullChart.data.labels = [];
+  nullChart.data.datasets.forEach(d=>d.data=[]);
+  nullChart.update('none');
+  lastBatch = -1;
+}
+
+function manualRefresh(){
+  const btn = document.getElementById('btn-refresh');
+  btn.textContent = '↻ Refreshing…';
+  btn.disabled = true;
+  clearCharts();
+  Promise.all([pollStatus(), pollMetrics(), pollAlerts()]).finally(()=>{
+    btn.textContent = '↻ Refresh';
+    btn.disabled = false;
+    toast('Refreshed','var(--blue)');
+  });
+}
+
 // ── Alerts polling ────────────────────────────────────────────────────────────
 async function pollAlerts(){
   try{
-    const r = await fetch('/api/alerts?limit=30');
+    const r = await fetch('/api/alerts?limit=30', {cache:'no-store'});
     const alerts = await r.json();
     const el = document.getElementById('alert-list');
+    const countEl = document.getElementById('alert-count');
+    if(countEl) countEl.textContent = alerts.length ? `${alerts.length} alert${alerts.length!==1?'s':''}` : 'no alerts';
     if(!alerts.length){ el.innerHTML='<p class="empty-state">No alerts yet</p>'; return; }
     el.innerHTML = alerts.map(a=>{
       const sev = a.severity||'info';
-      const t = (a.timestamp||'').slice(11,19);
+      const t = fmtDateTime(a.timestamp);
       const val = a.metric_value!=null ? ` <span style="color:var(--muted);font-family:monospace">${Number(a.metric_value).toFixed(4)}</span>` : '';
       return `<div class="alert-item ${sev}">
         <div class="alert-head">
@@ -575,6 +662,29 @@ async function quickIncident(type){
   await startProducer();
   toast(`✓ ${type} incident injected`,'var(--yellow)');
 }
+function clearChart(name){
+  if(name === 'mmd'){
+    mmdChart.data.labels = [];
+    mmdChart.data.datasets.forEach(d => d.data = []);
+    mmdChart.update('none');
+  } else if(name === 'nulls'){
+    nullChart.data.labels = [];
+    nullChart.data.datasets.forEach(d => d.data = []);
+    nullChart.update('none');
+  }
+  // Reset lastBatch so next poll redraws from full history
+  lastBatch = -1;
+}
+
+async function clearAlerts(){
+  if(!confirm('Clear all alerts? This cannot be undone.')) return;
+  await fetch('/api/alerts',{method:'DELETE', cache:'no-store'});
+  document.getElementById('alert-list').innerHTML='<p class="empty-state">No alerts yet</p>';
+  const countEl = document.getElementById('alert-count');
+  if(countEl) countEl.textContent = 'no alerts';
+  toast('Alerts cleared','var(--muted)');
+}
+
 async function saveConfig(){
   const patch = {
     alerts: { hysteresis: {
@@ -590,7 +700,7 @@ async function saveConfig(){
 // Load current config into sidebar fields
 async function loadConfig(){
   try{
-    const r = await fetch('/api/config');
+    const r = await fetch('/api/config', {cache:'no-store'});
     const cfg = await r.json();
     const h = cfg?.alerts?.hysteresis || {};
     if(h.required_consecutive) document.getElementById('cfg-consecutive').value = h.required_consecutive;
@@ -599,7 +709,7 @@ async function loadConfig(){
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-mmdChart      = mkChart('chart-mmd',      'MMD Score',     '#58a6ff');
+mmdChart      = mkChart('chart-mmd',      'MMD Score',     '#58a6ff', null, true);
 validityChart = mkChart('chart-validity', 'Validity Rate', '#3fb950', 1);
 nullChart     = mkMultiChart('chart-nulls');
 

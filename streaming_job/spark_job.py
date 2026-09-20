@@ -18,6 +18,7 @@ Run:
 """
 
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -55,7 +56,12 @@ CONFIG_PATH = Path(__file__).parent.parent / "configs" / "config.yaml"
 
 def load_config() -> dict:
     with open(CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+        cfg = yaml.safe_load(f)
+    # Environment variables override config file values (used inside Docker)
+    kafka_bs = os.environ.get("KAFKA_BOOTSTRAP_SERVERS")
+    if kafka_bs:
+        cfg.setdefault("kafka", {})["bootstrap_servers"] = kafka_bs
+    return cfg
 
 
 # ── Feature Schema ─────────────────────────────────────────────────────────────
@@ -73,13 +79,27 @@ EVENT_SCHEMA = StructType([
 
 # ── Spark Session ──────────────────────────────────────────────────────────────
 def create_spark_session(app_name: str, spark_cfg: dict) -> SparkSession:
-    return (
+    # SPARK_MASTER env var lets Docker use local[2] without changing config.yaml
+    master = os.environ.get("SPARK_MASTER", spark_cfg.get("master", "local[2]"))
+    builder = (
         SparkSession.builder
         .appName(app_name)
+        .master(master)
         .config("spark.sql.shuffle.partitions",
                 str(spark_cfg.get("shuffle_partitions", 4)))
-        .getOrCreate()
+        .config("spark.ui.port", "4040")
+        # ── Stability: prevent network blips from killing the job ──────────────
+        .config("spark.network.timeout",               "800s")
+        .config("spark.executor.heartbeatInterval",    "60s")
+        .config("spark.sql.streaming.stopTimeout",     "15000")
+        # ── Memory: avoid OOM on long-running jobs ─────────────────────────────
+        .config("spark.driver.memory",                 spark_cfg.get("driver_memory", "512m"))
+        .config("spark.driver.maxResultSize",          "256m")
+        # ── Streaming: keep micro-batch failures from escalating ───────────────
+        .config("spark.sql.streaming.numRecentProgressUpdates", "10")
     )
+    logger.info(f"Creating Spark session with master={master}")
+    return builder.getOrCreate()
 
 
 # ── Kafka Source ───────────────────────────────────────────────────────────────
@@ -87,10 +107,16 @@ def read_kafka_stream(spark: SparkSession, kafka_cfg: dict) -> DataFrame:
     raw = (
         spark.readStream
         .format("kafka")
-        .option("kafka.bootstrap.servers", kafka_cfg["bootstrap_servers"])
-        .option("subscribe",               kafka_cfg["topic"])
-        .option("startingOffsets",         kafka_cfg.get("starting_offsets", "latest"))
-        .option("failOnDataLoss",          "false")
+        .option("kafka.bootstrap.servers",        kafka_cfg["bootstrap_servers"])
+        .option("subscribe",                       kafka_cfg["topic"])
+        .option("startingOffsets",                 kafka_cfg.get("starting_offsets", "latest"))
+        .option("failOnDataLoss",                  "false")
+        # ── Keep the consumer alive across idle periods ────────────────────────
+        .option("kafka.session.timeout.ms",        "45000")
+        .option("kafka.heartbeat.interval.ms",     "15000")
+        .option("kafka.request.timeout.ms",        "60000")
+        .option("kafka.connections.max.idle.ms",   "540000")
+        .option("kafka.max.poll.interval.ms",      "300000")
         .load()
     )
     return (
@@ -135,6 +161,23 @@ class BatchProcessor:
 
     # ── Main entry ─────────────────────────────────────────────────────────────
     def process_batch(self, batch_df: DataFrame, batch_id: int) -> None:
+        """
+        foreachBatch handler. ALL exceptions are caught here so that a single
+        bad batch never terminates the streaming query.
+        """
+        try:
+            self._process_batch_inner(batch_df, batch_id)
+        except Exception as exc:
+            logger.error(
+                f"[batch {batch_id}] Unhandled error — skipping batch to keep stream alive: {exc}",
+                exc_info=True,
+            )
+            try:
+                batch_df.unpersist()
+            except Exception:
+                pass
+
+    def _process_batch_inner(self, batch_df: DataFrame, batch_id: int) -> None:
         batch_df.cache()
         row_count = batch_df.count()
 

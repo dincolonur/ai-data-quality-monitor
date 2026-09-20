@@ -235,7 +235,7 @@ class WarmupManager:
             )
             if self.batch_count >= self.calibration_batches:
                 threshold = self.detector.calibrate(
-                    self.calibration_scores, self.calibration_percentile
+                    self.calibration_scores  # percentile already set on the detector at fit() time
                 )
                 self.phase = WarmupPhase.MONITORING
                 self.batch_count = 0
