@@ -36,7 +36,7 @@ from pyspark.sql.types import (
     StringType, IntegerType, LongType, DoubleType,
 )
 
-from streaming_job.validation import validate_batch, compute_null_rates
+from streaming_job.validation import validate_batch
 from streaming_job.drift import (
     WarmupManager, WarmupPhase, Baseline,
     run_drift_detection, NUMERIC_FEATURES,
@@ -150,7 +150,13 @@ class BatchProcessor:
             calibration_percentile= warmup_cfg.get("calibration_percentile", 99.0),
         )
         self.baseline   = Baseline()
-        self.dispatcher = AlertDispatcher(config)
+        # run_id is written to dashboard_state.json; the UI resets its batch
+        # cursor when run_id changes, so stale history from a previous run
+        # never blocks new WARMUP/CALIBRATE batches from appearing.
+        import time as _time
+        run_id = str(int(_time.time()))
+        self.dispatcher = AlertDispatcher(config, run_id=run_id)
+        logger.info(f"BatchProcessor started. run_id={run_id}")
 
         # Generate the dashboard HTML once at startup
         try:
@@ -209,7 +215,16 @@ class BatchProcessor:
         self.dispatcher.dispatch_drift_report(batch_id, drift_report)
 
         # ── 4. Push metrics to dashboard ────────────────────────────────────
-        null_rates = compute_null_rates(batch_df)
+        # Derive null rates from val_summary (already computed above — zero
+        # extra Spark actions).  Previously called compute_null_rates(batch_df)
+        # here, which fired N+1 Spark jobs per batch and could fail silently
+        # (caught by the outer try/except), leaving the dashboard un-updated
+        # even though the alert had already fired in step 1.
+        null_rates_from_val = {
+            issue["feature"]: issue["rate"]
+            for issue in val_summary.get("issues", [])
+            if issue["issue_type"] == "null_value"
+        }
         metrics = {
             "phase":         drift_report["phase"],
             "mmd_score":     drift_report.get("mmd_score"),
@@ -217,7 +232,7 @@ class BatchProcessor:
             "mmd_drift":     drift_report.get("mmd_drift", False),
             "validity_rate": val_summary.get("validity_rate"),
             "row_count":     row_count,
-            **{f"null_rate_{feat}": round(null_rates.get(feat, 0.0), 4)
+            **{f"null_rate_{feat}": null_rates_from_val.get(feat, 0.0)
                for feat in NUMERIC_FEATURES},
         }
         self.dispatcher.push_dashboard_metrics(batch_id, metrics)

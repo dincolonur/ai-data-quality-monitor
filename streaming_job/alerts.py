@@ -308,10 +308,17 @@ class DashboardHandler:
     MAX_ALERTS   = 50
     MAX_HISTORY  = 200
 
-    def __init__(self, state_path: str):
+    def __init__(self, state_path: str, run_id: Optional[str] = None):
         self.state_path = Path(state_path)
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         self._state = self._load()
+        if run_id is not None:
+            # Fresh Spark run — clear stale metric history so the UI doesn't
+            # confuse old (monitoring-phase) batch IDs with new (warmup) ones.
+            # Alerts are kept for continuity across restarts.
+            self._state["metrics_history"] = []
+            self._state["summary"]["run_id"] = run_id
+            self._save()
 
     def _load(self) -> dict:
         if self.state_path.exists():
@@ -337,9 +344,13 @@ class DashboardHandler:
         entry = {"batch_id": batch_id, "timestamp": datetime.now(timezone.utc).isoformat(), **metrics}
         self._state["metrics_history"].append(entry)
         self._state["metrics_history"] = self._state["metrics_history"][-self.MAX_HISTORY:]
+        # Preserve run_id set at startup; update everything else.
+        run_id = self._state["summary"].get("run_id")
         self._state["summary"] = {
+            "run_id": run_id,
             "last_batch": batch_id,
             "last_updated": entry["timestamp"],
+            "current_phase": metrics.get("phase"),
             "total_alerts": len(self._state["alerts"]),
         }
         self._save()
@@ -355,7 +366,7 @@ class AlertDispatcher:
     Applies hysteresis before dispatching to prevent flapping.
     """
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, run_id: Optional[str] = None):
         self.config = config
         alert_cfg  = config.get("alerts", {})
         hyst_cfg   = config.get("alerts", {}).get("hysteresis", {})
@@ -376,7 +387,7 @@ class AlertDispatcher:
 
         # Dashboard
         if dash_path := alert_cfg.get("dashboard_state_path"):
-            self.dashboard_handler = DashboardHandler(dash_path)
+            self.dashboard_handler = DashboardHandler(dash_path, run_id=run_id)
             self._handlers.append(self.dashboard_handler)
             logger.info(f"DashboardHandler active → {dash_path}")
         else:
