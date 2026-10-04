@@ -338,6 +338,7 @@ canvas{max-height:180px;}
 const API = '';
 let mmdChart, nullChart, validityChart;
 let lastBatch = -1;
+let lastRunId  = null;
 const FEATURES = ['age','purchase_amount','session_duration','page_views'];
 const F_COLORS = ['#58a6ff','#3fb950','#f0883e','#bc8cff'];
 let logCount = 0;
@@ -491,6 +492,14 @@ async function pollStatus(){
   }
 }
 
+// ── Phase badge helper ────────────────────────────────────────────────────────
+function setPhase(phase){
+  if(!phase) return;
+  const pb = document.getElementById('phase-badge');
+  pb.className = 'phase-badge '+(phase||'');
+  pb.textContent = {warmup:'WARM-UP',calibrate:'CALIBRATING',monitoring:'MONITORING'}[phase]||(phase||'—').toUpperCase();
+}
+
 // ── Metrics polling ───────────────────────────────────────────────────────────
 async function pollMetrics(){
   try{
@@ -503,7 +512,25 @@ async function pollMetrics(){
     if(summary.last_updated)
       document.getElementById('last-updated').textContent = 'Updated '+fmtTime(summary.last_updated)+' PDT';
 
-    const newBatches = history.filter(h=>h.batch_id>lastBatch);
+    // Phase badge: always reflect live summary (not just last plotted batch).
+    // This ensures WARM-UP / CALIBRATING are visible immediately on restart.
+    if(summary.current_phase) setPhase(summary.current_phase);
+
+    // Detect a new Spark run (run_id written on each BatchProcessor start).
+    // When run_id changes the old metrics_history was cleared server-side, so
+    // we reset the chart cursor so new WARMUP batches aren't filtered out.
+    const runId = summary.run_id ?? null;
+    if(runId !== null && runId !== lastRunId){
+      lastRunId = runId;
+      lastBatch = -1;
+    }
+
+    // Track new entries by their position in the array (not batch_id, which
+    // resets to 0 on restart).  lastBatch=-1 means "load everything".
+    const newBatches = lastBatch === -1
+      ? history
+      : history.filter(h=>h.batch_id>lastBatch);
+
     newBatches.forEach(h=>{
       const lbl = h.timestamp ? fmtTime(h.timestamp) : String(h.batch_id);
       if(h.mmd_score!=null)     pushChart(mmdChart, lbl, h.mmd_score, h.mmd_threshold ?? null);
@@ -527,11 +554,8 @@ async function pollMetrics(){
       valEl.textContent = val!=null ? (val*100).toFixed(1)+'%' : '—';
       valEl.className = 'kpi-val '+(val!=null?(val>0.95?'ok':val>0.8?'warn':'crit'):'');
 
-      // Phase badge
-      const phase = last.phase;
-      const pb = document.getElementById('phase-badge');
-      pb.className = 'phase-badge '+(phase||'');
-      pb.textContent = {warmup:'WARM-UP',calibrate:'CALIBRATING',monitoring:'MONITORING'}[phase]||(phase||'—').toUpperCase();
+      // Phase badge from latest batch (fallback if summary.current_phase absent)
+      setPhase(last.phase);
     }
   } catch(e){}
 }
@@ -546,7 +570,8 @@ function clearCharts(){
   nullChart.data.labels = [];
   nullChart.data.datasets.forEach(d=>d.data=[]);
   nullChart.update('none');
-  lastBatch = -1;
+  lastBatch  = -1;
+  lastRunId  = null;   // re-sync with current run_id on next poll
 }
 
 function manualRefresh(){

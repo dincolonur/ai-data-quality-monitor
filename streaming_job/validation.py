@@ -176,11 +176,17 @@ def _log_summary(summary: dict) -> None:
 # ── Null Rate Helper ──────────────────────────────────────────────────────────
 
 def compute_null_rates(df: DataFrame) -> dict[str, float]:
-    """Return null rate per column as a plain dict."""
+    """Return null rate per column as a plain dict.
+
+    Uses a single aggregation pass (2 Spark actions total) instead of
+    one filter+count per column — critical for performance on wide schemas.
+    """
     total = df.count()
     if total == 0:
         return {}
-    return {
-        col: df.filter(F.col(col).isNull()).count() / total
-        for col in df.columns
-    }
+    agg_exprs = [
+        (F.sum(F.col(c).isNull().cast("int")) / F.lit(total)).alias(c)
+        for c in df.columns
+    ]
+    row = df.agg(*agg_exprs).collect()[0]
+    return {c: float(row[c] or 0.0) for c in df.columns}
