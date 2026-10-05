@@ -1,36 +1,842 @@
 {
   "alerts": [
     {
-      "timestamp": "2026-10-04T00:31:01.061566+00:00",
-      "batch_id": 12,
+      "timestamp": "2026-10-05T02:32:30.638200+00:00",
+      "batch_id": 14,
       "alert_type": "drift_psi",
       "severity": "medium",
-      "message": "[PSI] Feature 'session_duration' distribution drift \u2014 PSI test flagged significant distribution change",
-      "what": "[PSI] Feature 'session_duration' distribution drift",
+      "message": "[PSI] Feature 'page_views' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'page_views' distribution drift",
       "why": "PSI test flagged significant distribution change",
-      "metric_value": 0.1035,
+      "metric_value": 0.1265,
       "details": {
-        "feature": "session_duration",
+        "feature": "page_views",
         "method": "psi",
-        "psi": 0.1035,
+        "psi": 0.1265,
         "level": "warning",
         "drifted": true
       }
     },
     {
-      "timestamp": "2026-10-04T00:31:01.058714+00:00",
-      "batch_id": 12,
+      "timestamp": "2026-10-05T02:32:30.637265+00:00",
+      "batch_id": 14,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'session_duration' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'session_duration' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.1136,
+      "details": {
+        "feature": "session_duration",
+        "method": "psi",
+        "psi": 0.1136,
+        "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:32:30.635740+00:00",
+      "batch_id": 14,
       "alert_type": "drift_psi",
       "severity": "medium",
       "message": "[PSI] Feature 'age' distribution drift \u2014 PSI test flagged significant distribution change",
       "what": "[PSI] Feature 'age' distribution drift",
       "why": "PSI test flagged significant distribution change",
-      "metric_value": 0.1259,
+      "metric_value": 0.1135,
       "details": {
         "feature": "age",
         "method": "psi",
-        "psi": 0.1259,
+        "psi": 0.1135,
         "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:16:30.640647+00:00",
+      "batch_id": 198,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'session_duration' has null_value in 65 rows (43.9%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'session_duration' has null_value in 65 rows (43.9%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.4392,
+      "details": {
+        "feature": "session_duration",
+        "issue_type": "null_value",
+        "count": 65,
+        "rate": 0.4392
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:16:30.639338+00:00",
+      "batch_id": 198,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'purchase_amount' has null_value in 57 rows (38.5%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'purchase_amount' has null_value in 57 rows (38.5%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.3851,
+      "details": {
+        "feature": "purchase_amount",
+        "issue_type": "null_value",
+        "count": 57,
+        "rate": 0.3851
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:16:30.636326+00:00",
+      "batch_id": 198,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'age' has null_value in 53 rows (35.8%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'age' has null_value in 53 rows (35.8%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.3581,
+      "details": {
+        "feature": "age",
+        "issue_type": "null_value",
+        "count": 53,
+        "rate": 0.3581
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:16:00.567542+00:00",
+      "batch_id": 197,
+      "alert_type": "drift_null_rate_drift",
+      "severity": "medium",
+      "message": "[NULL_RATE_DRIFT] Feature 'session_duration' distribution drift \u2014 NULL_RATE_DRIFT test flagged significant distribution change",
+      "what": "[NULL_RATE_DRIFT] Feature 'session_duration' distribution drift",
+      "why": "NULL_RATE_DRIFT test flagged significant distribution change",
+      "metric_value": 0.0636,
+      "details": {
+        "feature": "session_duration",
+        "method": "null_rate_drift",
+        "baseline_null_rate": 0.415,
+        "current_null_rate": 0.3514,
+        "delta": 0.0636,
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:16:00.565704+00:00",
+      "batch_id": 197,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'page_views' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'page_views' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.1131,
+      "details": {
+        "feature": "page_views",
+        "method": "psi",
+        "psi": 0.1131,
+        "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:15:30.682074+00:00",
+      "batch_id": 196,
+      "alert_type": "drift_null_rate_drift",
+      "severity": "medium",
+      "message": "[NULL_RATE_DRIFT] Feature 'age' distribution drift \u2014 NULL_RATE_DRIFT test flagged significant distribution change",
+      "what": "[NULL_RATE_DRIFT] Feature 'age' distribution drift",
+      "why": "NULL_RATE_DRIFT test flagged significant distribution change",
+      "metric_value": 0.0748,
+      "details": {
+        "feature": "age",
+        "method": "null_rate_drift",
+        "baseline_null_rate": 0.4626,
+        "current_null_rate": 0.3878,
+        "delta": 0.0748,
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:15:30.678807+00:00",
+      "batch_id": 196,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'purchase_amount' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'purchase_amount' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.1829,
+      "details": {
+        "feature": "purchase_amount",
+        "method": "psi",
+        "psi": 0.1829,
+        "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:14:00.589377+00:00",
+      "batch_id": 193,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'session_duration' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'session_duration' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.2353,
+      "details": {
+        "feature": "session_duration",
+        "method": "psi",
+        "psi": 0.2353,
+        "level": "alert",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:14:00.588621+00:00",
+      "batch_id": 193,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'age' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'age' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.2177,
+      "details": {
+        "feature": "age",
+        "method": "psi",
+        "psi": 0.2177,
+        "level": "alert",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:14:00.587752+00:00",
+      "batch_id": 193,
+      "alert_type": "rff_mmd_drift",
+      "severity": "medium",
+      "message": "RFF-MMD drift score=0.041244 exceeds threshold=0.033784 \u2014 Feature distribution has shifted significantly from baseline",
+      "what": "RFF-MMD drift score=0.041244 exceeds threshold=0.033784",
+      "why": "Feature distribution has shifted significantly from baseline",
+      "metric_value": 0.041244,
+      "details": {
+        "threshold": 0.033784,
+        "ratio": 1.221
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:14:00.464052+00:00",
+      "batch_id": 193,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'session_duration' has null_value in 56 rows (38.1%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'session_duration' has null_value in 56 rows (38.1%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.381,
+      "details": {
+        "feature": "session_duration",
+        "issue_type": "null_value",
+        "count": 56,
+        "rate": 0.381
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:14:00.463494+00:00",
+      "batch_id": 193,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'purchase_amount' has null_value in 60 rows (40.8%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'purchase_amount' has null_value in 60 rows (40.8%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.4082,
+      "details": {
+        "feature": "purchase_amount",
+        "issue_type": "null_value",
+        "count": 60,
+        "rate": 0.4082
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:14:00.461451+00:00",
+      "batch_id": 193,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'age' has null_value in 60 rows (40.8%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'age' has null_value in 60 rows (40.8%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.4082,
+      "details": {
+        "feature": "age",
+        "issue_type": "null_value",
+        "count": 60,
+        "rate": 0.4082
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:13:30.545782+00:00",
+      "batch_id": 192,
+      "alert_type": "drift_null_rate_drift",
+      "severity": "medium",
+      "message": "[NULL_RATE_DRIFT] Feature 'session_duration' distribution drift \u2014 NULL_RATE_DRIFT test flagged significant distribution change",
+      "what": "[NULL_RATE_DRIFT] Feature 'session_duration' distribution drift",
+      "why": "NULL_RATE_DRIFT test flagged significant distribution change",
+      "metric_value": 0.0501,
+      "details": {
+        "feature": "session_duration",
+        "method": "null_rate_drift",
+        "baseline_null_rate": 0.415,
+        "current_null_rate": 0.3649,
+        "delta": 0.0501,
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:13:30.544164+00:00",
+      "batch_id": 192,
+      "alert_type": "drift_null_rate_drift",
+      "severity": "medium",
+      "message": "[NULL_RATE_DRIFT] Feature 'purchase_amount' distribution drift \u2014 NULL_RATE_DRIFT test flagged significant distribution change",
+      "what": "[NULL_RATE_DRIFT] Feature 'purchase_amount' distribution drift",
+      "why": "NULL_RATE_DRIFT test flagged significant distribution change",
+      "metric_value": 0.0649,
+      "details": {
+        "feature": "purchase_amount",
+        "method": "null_rate_drift",
+        "baseline_null_rate": 0.3878,
+        "current_null_rate": 0.4527,
+        "delta": 0.0649,
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:13:00.683108+00:00",
+      "batch_id": 191,
+      "alert_type": "drift_null_rate_drift",
+      "severity": "medium",
+      "message": "[NULL_RATE_DRIFT] Feature 'age' distribution drift \u2014 NULL_RATE_DRIFT test flagged significant distribution change",
+      "what": "[NULL_RATE_DRIFT] Feature 'age' distribution drift",
+      "why": "NULL_RATE_DRIFT test flagged significant distribution change",
+      "metric_value": 0.1224,
+      "details": {
+        "feature": "age",
+        "method": "null_rate_drift",
+        "baseline_null_rate": 0.4626,
+        "current_null_rate": 0.3401,
+        "delta": 0.1224,
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:13:00.681617+00:00",
+      "batch_id": 191,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'purchase_amount' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'purchase_amount' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.1202,
+      "details": {
+        "feature": "purchase_amount",
+        "method": "psi",
+        "psi": 0.1202,
+        "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:12:30.714117+00:00",
+      "batch_id": 190,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'page_views' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'page_views' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.1338,
+      "details": {
+        "feature": "page_views",
+        "method": "psi",
+        "psi": 0.1338,
+        "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:11:30.683566+00:00",
+      "batch_id": 188,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'session_duration' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'session_duration' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.1563,
+      "details": {
+        "feature": "session_duration",
+        "method": "psi",
+        "psi": 0.1563,
+        "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:11:30.682769+00:00",
+      "batch_id": 188,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'age' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'age' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.3226,
+      "details": {
+        "feature": "age",
+        "method": "psi",
+        "psi": 0.3226,
+        "level": "alert",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:11:30.540612+00:00",
+      "batch_id": 188,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'session_duration' has null_value in 58 rows (39.2%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'session_duration' has null_value in 58 rows (39.2%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.3919,
+      "details": {
+        "feature": "session_duration",
+        "issue_type": "null_value",
+        "count": 58,
+        "rate": 0.3919
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:11:30.540089+00:00",
+      "batch_id": 188,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'purchase_amount' has null_value in 63 rows (42.6%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'purchase_amount' has null_value in 63 rows (42.6%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.4257,
+      "details": {
+        "feature": "purchase_amount",
+        "issue_type": "null_value",
+        "count": 63,
+        "rate": 0.4257
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:11:30.538975+00:00",
+      "batch_id": 188,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'age' has null_value in 55 rows (37.2%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'age' has null_value in 55 rows (37.2%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.3716,
+      "details": {
+        "feature": "age",
+        "issue_type": "null_value",
+        "count": 55,
+        "rate": 0.3716
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:11:00.675527+00:00",
+      "batch_id": 187,
+      "alert_type": "drift_null_rate_drift",
+      "severity": "medium",
+      "message": "[NULL_RATE_DRIFT] Feature 'age' distribution drift \u2014 NULL_RATE_DRIFT test flagged significant distribution change",
+      "what": "[NULL_RATE_DRIFT] Feature 'age' distribution drift",
+      "why": "NULL_RATE_DRIFT test flagged significant distribution change",
+      "metric_value": 0.1224,
+      "details": {
+        "feature": "age",
+        "method": "null_rate_drift",
+        "baseline_null_rate": 0.4626,
+        "current_null_rate": 0.3401,
+        "delta": 0.1224,
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:10:30.598205+00:00",
+      "batch_id": 186,
+      "alert_type": "drift_null_rate_drift",
+      "severity": "medium",
+      "message": "[NULL_RATE_DRIFT] Feature 'session_duration' distribution drift \u2014 NULL_RATE_DRIFT test flagged significant distribution change",
+      "what": "[NULL_RATE_DRIFT] Feature 'session_duration' distribution drift",
+      "why": "NULL_RATE_DRIFT test flagged significant distribution change",
+      "metric_value": 0.0974,
+      "details": {
+        "feature": "session_duration",
+        "method": "null_rate_drift",
+        "baseline_null_rate": 0.415,
+        "current_null_rate": 0.3176,
+        "delta": 0.0974,
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:10:30.597427+00:00",
+      "batch_id": 186,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'page_views' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'page_views' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.1985,
+      "details": {
+        "feature": "page_views",
+        "method": "psi",
+        "psi": 0.1985,
+        "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:10:00.491884+00:00",
+      "batch_id": 185,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'purchase_amount' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'purchase_amount' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.1297,
+      "details": {
+        "feature": "purchase_amount",
+        "method": "psi",
+        "psi": 0.1297,
+        "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:09:30.593969+00:00",
+      "batch_id": 184,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'session_duration' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'session_duration' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.2644,
+      "details": {
+        "feature": "session_duration",
+        "method": "psi",
+        "psi": 0.2644,
+        "level": "alert",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:09:30.593298+00:00",
+      "batch_id": 184,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'age' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'age' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.1463,
+      "details": {
+        "feature": "age",
+        "method": "psi",
+        "psi": 0.1463,
+        "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:09:30.475089+00:00",
+      "batch_id": 184,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'session_duration' has null_value in 67 rows (45.6%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'session_duration' has null_value in 67 rows (45.6%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.4558,
+      "details": {
+        "feature": "session_duration",
+        "issue_type": "null_value",
+        "count": 67,
+        "rate": 0.4558
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:09:30.474561+00:00",
+      "batch_id": 184,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'purchase_amount' has null_value in 60 rows (40.8%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'purchase_amount' has null_value in 60 rows (40.8%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.4082,
+      "details": {
+        "feature": "purchase_amount",
+        "issue_type": "null_value",
+        "count": 60,
+        "rate": 0.4082
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:09:30.473028+00:00",
+      "batch_id": 184,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'age' has null_value in 57 rows (38.8%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'age' has null_value in 57 rows (38.8%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.3878,
+      "details": {
+        "feature": "age",
+        "issue_type": "null_value",
+        "count": 57,
+        "rate": 0.3878
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:09:00.630650+00:00",
+      "batch_id": 183,
+      "alert_type": "drift_null_rate_drift",
+      "severity": "medium",
+      "message": "[NULL_RATE_DRIFT] Feature 'age' distribution drift \u2014 NULL_RATE_DRIFT test flagged significant distribution change",
+      "what": "[NULL_RATE_DRIFT] Feature 'age' distribution drift",
+      "why": "NULL_RATE_DRIFT test flagged significant distribution change",
+      "metric_value": 0.118,
+      "details": {
+        "feature": "age",
+        "method": "null_rate_drift",
+        "baseline_null_rate": 0.4626,
+        "current_null_rate": 0.3446,
+        "delta": 0.118,
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:08:30.609831+00:00",
+      "batch_id": 182,
+      "alert_type": "drift_null_rate_drift",
+      "severity": "medium",
+      "message": "[NULL_RATE_DRIFT] Feature 'purchase_amount' distribution drift \u2014 NULL_RATE_DRIFT test flagged significant distribution change",
+      "what": "[NULL_RATE_DRIFT] Feature 'purchase_amount' distribution drift",
+      "why": "NULL_RATE_DRIFT test flagged significant distribution change",
+      "metric_value": 0.0816,
+      "details": {
+        "feature": "purchase_amount",
+        "method": "null_rate_drift",
+        "baseline_null_rate": 0.3878,
+        "current_null_rate": 0.3061,
+        "delta": 0.0816,
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:08:00.746336+00:00",
+      "batch_id": 181,
+      "alert_type": "drift_null_rate_drift",
+      "severity": "medium",
+      "message": "[NULL_RATE_DRIFT] Feature 'session_duration' distribution drift \u2014 NULL_RATE_DRIFT test flagged significant distribution change",
+      "what": "[NULL_RATE_DRIFT] Feature 'session_duration' distribution drift",
+      "why": "NULL_RATE_DRIFT test flagged significant distribution change",
+      "metric_value": 0.0544,
+      "details": {
+        "feature": "session_duration",
+        "method": "null_rate_drift",
+        "baseline_null_rate": 0.415,
+        "current_null_rate": 0.3605,
+        "delta": 0.0544,
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:08:00.744907+00:00",
+      "batch_id": 181,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'page_views' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'page_views' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.1944,
+      "details": {
+        "feature": "page_views",
+        "method": "psi",
+        "psi": 0.1944,
+        "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:07:30.797433+00:00",
+      "batch_id": 180,
+      "alert_type": "rff_mmd_drift",
+      "severity": "medium",
+      "message": "RFF-MMD drift score=0.046060 exceeds threshold=0.033784 \u2014 Feature distribution has shifted significantly from baseline",
+      "what": "RFF-MMD drift score=0.046060 exceeds threshold=0.033784",
+      "why": "Feature distribution has shifted significantly from baseline",
+      "metric_value": 0.04606,
+      "details": {
+        "threshold": 0.033784,
+        "ratio": 1.363
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:07:10.621110+00:00",
+      "batch_id": 179,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'session_duration' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'session_duration' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 1.6207,
+      "details": {
+        "feature": "session_duration",
+        "method": "psi",
+        "psi": 1.6207,
+        "level": "alert",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:07:10.620607+00:00",
+      "batch_id": 179,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'purchase_amount' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'purchase_amount' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 1.5372,
+      "details": {
+        "feature": "purchase_amount",
+        "method": "psi",
+        "psi": 1.5372,
+        "level": "alert",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:07:10.619856+00:00",
+      "batch_id": 179,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'age' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'age' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 1.2096,
+      "details": {
+        "feature": "age",
+        "method": "psi",
+        "psi": 1.2096,
+        "level": "alert",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:07:10.430807+00:00",
+      "batch_id": 179,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'session_duration' has null_value in 10 rows (30.3%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'session_duration' has null_value in 10 rows (30.3%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.303,
+      "details": {
+        "feature": "session_duration",
+        "issue_type": "null_value",
+        "count": 10,
+        "rate": 0.303
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:07:10.430314+00:00",
+      "batch_id": 179,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'purchase_amount' has null_value in 10 rows (30.3%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'purchase_amount' has null_value in 10 rows (30.3%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.303,
+      "details": {
+        "feature": "purchase_amount",
+        "issue_type": "null_value",
+        "count": 10,
+        "rate": 0.303
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:07:10.429330+00:00",
+      "batch_id": 179,
+      "alert_type": "validation_null_value",
+      "severity": "critical",
+      "message": "Feature 'age' has null_value in 12 rows (36.4%) \u2014 Null Value detected above threshold",
+      "what": "Feature 'age' has null_value in 12 rows (36.4%)",
+      "why": "Null Value detected above threshold",
+      "metric_value": 0.3636,
+      "details": {
+        "feature": "age",
+        "issue_type": "null_value",
+        "count": 12,
+        "rate": 0.3636
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:06:30.973318+00:00",
+      "batch_id": 178,
+      "alert_type": "drift_null_rate_drift",
+      "severity": "medium",
+      "message": "[NULL_RATE_DRIFT] Feature 'age' distribution drift \u2014 NULL_RATE_DRIFT test flagged significant distribution change",
+      "what": "[NULL_RATE_DRIFT] Feature 'age' distribution drift",
+      "why": "NULL_RATE_DRIFT test flagged significant distribution change",
+      "metric_value": 0.0816,
+      "details": {
+        "feature": "age",
+        "method": "null_rate_drift",
+        "baseline_null_rate": 0.4626,
+        "current_null_rate": 0.381,
+        "delta": 0.0816,
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:05:30.860842+00:00",
+      "batch_id": 176,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'page_views' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'page_views' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.1909,
+      "details": {
+        "feature": "page_views",
+        "method": "psi",
+        "psi": 0.1909,
+        "level": "warning",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:05:00.583395+00:00",
+      "batch_id": 175,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'session_duration' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'session_duration' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.2679,
+      "details": {
+        "feature": "session_duration",
+        "method": "psi",
+        "psi": 0.2679,
+        "level": "alert",
+        "drifted": true
+      }
+    },
+    {
+      "timestamp": "2026-10-05T02:05:00.582819+00:00",
+      "batch_id": 175,
+      "alert_type": "drift_psi",
+      "severity": "medium",
+      "message": "[PSI] Feature 'purchase_amount' distribution drift \u2014 PSI test flagged significant distribution change",
+      "what": "[PSI] Feature 'purchase_amount' distribution drift",
+      "why": "PSI test flagged significant distribution change",
+      "metric_value": 0.2926,
+      "details": {
+        "feature": "purchase_amount",
+        "method": "psi",
+        "psi": 0.2926,
+        "level": "alert",
         "drifted": true
       }
     }
@@ -38,13 +844,13 @@
   "metrics_history": [
     {
       "batch_id": 1,
-      "timestamp": "2026-10-04T00:25:31.288984+00:00",
+      "timestamp": "2026-10-05T02:26:01.305203+00:00",
       "phase": "warmup",
       "mmd_score": null,
       "mmd_threshold": null,
       "mmd_drift": false,
       "validity_rate": 1.0,
-      "row_count": 140,
+      "row_count": 70,
       "null_rate_age": 0.0,
       "null_rate_purchase_amount": 0.0,
       "null_rate_session_duration": 0.0,
@@ -52,7 +858,7 @@
     },
     {
       "batch_id": 2,
-      "timestamp": "2026-10-04T00:26:00.857094+00:00",
+      "timestamp": "2026-10-05T02:26:31.165329+00:00",
       "phase": "warmup",
       "mmd_score": null,
       "mmd_threshold": null,
@@ -66,7 +872,7 @@
     },
     {
       "batch_id": 3,
-      "timestamp": "2026-10-04T00:26:30.590199+00:00",
+      "timestamp": "2026-10-05T02:27:00.604372+00:00",
       "phase": "warmup",
       "mmd_score": null,
       "mmd_threshold": null,
@@ -80,21 +886,7 @@
     },
     {
       "batch_id": 4,
-      "timestamp": "2026-10-04T00:27:00.600109+00:00",
-      "phase": "warmup",
-      "mmd_score": null,
-      "mmd_threshold": null,
-      "mmd_drift": false,
-      "validity_rate": 1.0,
-      "row_count": 148,
-      "null_rate_age": 0.0,
-      "null_rate_purchase_amount": 0.0,
-      "null_rate_session_duration": 0.0,
-      "null_rate_page_views": 0.0
-    },
-    {
-      "batch_id": 5,
-      "timestamp": "2026-10-04T00:27:30.716975+00:00",
+      "timestamp": "2026-10-05T02:27:30.708785+00:00",
       "phase": "warmup",
       "mmd_score": null,
       "mmd_threshold": null,
@@ -107,10 +899,10 @@
       "null_rate_page_views": 0.0
     },
     {
-      "batch_id": 6,
-      "timestamp": "2026-10-04T00:28:01.185878+00:00",
-      "phase": "calibrate",
-      "mmd_score": 0.002243,
+      "batch_id": 5,
+      "timestamp": "2026-10-05T02:28:00.587382+00:00",
+      "phase": "warmup",
+      "mmd_score": null,
       "mmd_threshold": null,
       "mmd_drift": false,
       "validity_rate": 1.0,
@@ -121,10 +913,24 @@
       "null_rate_page_views": 0.0
     },
     {
-      "batch_id": 7,
-      "timestamp": "2026-10-04T00:28:30.517490+00:00",
+      "batch_id": 6,
+      "timestamp": "2026-10-05T02:28:30.867875+00:00",
       "phase": "calibrate",
-      "mmd_score": 0.012003,
+      "mmd_score": 0.001743,
+      "mmd_threshold": null,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 147,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 7,
+      "timestamp": "2026-10-05T02:29:00.412618+00:00",
+      "phase": "calibrate",
+      "mmd_score": 0.001985,
       "mmd_threshold": null,
       "mmd_drift": false,
       "validity_rate": 1.0,
@@ -136,9 +942,9 @@
     },
     {
       "batch_id": 8,
-      "timestamp": "2026-10-04T00:29:00.511913+00:00",
+      "timestamp": "2026-10-05T02:29:30.576975+00:00",
       "phase": "calibrate",
-      "mmd_score": 0.006708,
+      "mmd_score": 0.003534,
       "mmd_threshold": null,
       "mmd_drift": false,
       "validity_rate": 1.0,
@@ -150,13 +956,13 @@
     },
     {
       "batch_id": 9,
-      "timestamp": "2026-10-04T00:29:30.486225+00:00",
+      "timestamp": "2026-10-05T02:30:00.455397+00:00",
       "phase": "calibrate",
-      "mmd_score": 0.00276,
+      "mmd_score": 0.012751,
       "mmd_threshold": null,
       "mmd_drift": false,
       "validity_rate": 1.0,
-      "row_count": 148,
+      "row_count": 147,
       "null_rate_age": 0.0,
       "null_rate_purchase_amount": 0.0,
       "null_rate_session_duration": 0.0,
@@ -164,10 +970,10 @@
     },
     {
       "batch_id": 10,
-      "timestamp": "2026-10-04T00:30:00.449456+00:00",
+      "timestamp": "2026-10-05T02:30:30.519910+00:00",
       "phase": "calibrate",
-      "mmd_score": 0.003511,
-      "mmd_threshold": 0.011792,
+      "mmd_score": 0.010946,
+      "mmd_threshold": 0.012678,
       "mmd_drift": false,
       "validity_rate": 1.0,
       "row_count": 147,
@@ -178,10 +984,24 @@
     },
     {
       "batch_id": 11,
-      "timestamp": "2026-10-04T00:30:31.364733+00:00",
+      "timestamp": "2026-10-05T02:31:00.721417+00:00",
       "phase": "monitoring",
-      "mmd_score": 0.002339,
-      "mmd_threshold": 0.011792,
+      "mmd_score": 0.004931,
+      "mmd_threshold": 0.012678,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 148,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 12,
+      "timestamp": "2026-10-05T02:31:30.946485+00:00",
+      "phase": "monitoring",
+      "mmd_score": 0.006513,
+      "mmd_threshold": 0.012678,
       "mmd_drift": false,
       "validity_rate": 1.0,
       "row_count": 147,
@@ -189,13 +1009,55 @@
       "null_rate_purchase_amount": 0.0,
       "null_rate_session_duration": 0.0,
       "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 13,
+      "timestamp": "2026-10-05T02:32:00.798875+00:00",
+      "phase": "monitoring",
+      "mmd_score": 0.002302,
+      "mmd_threshold": 0.012678,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 148,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 14,
+      "timestamp": "2026-10-05T02:32:30.639194+00:00",
+      "phase": "monitoring",
+      "mmd_score": 0.002848,
+      "mmd_threshold": 0.012678,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 147,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
+    },
+    {
+      "batch_id": 15,
+      "timestamp": "2026-10-05T02:33:00.623018+00:00",
+      "phase": "monitoring",
+      "mmd_score": 0.004529,
+      "mmd_threshold": 0.012678,
+      "mmd_drift": false,
+      "validity_rate": 1.0,
+      "row_count": 148,
+      "null_rate_age": 0.0,
+      "null_rate_purchase_amount": 0.0,
+      "null_rate_session_duration": 0.0,
+      "null_rate_page_views": 0.0
     }
   ],
   "summary": {
-    "run_id": "1791073501",
-    "last_batch": 11,
-    "last_updated": "2026-10-04T00:30:31.364733+00:00",
+    "run_id": "1791167145",
+    "last_batch": 15,
+    "last_updated": "2026-10-05T02:33:00.623018+00:00",
     "current_phase": "monitoring",
-    "total_alerts": 0
+    "total_alerts": 50
   }
 }

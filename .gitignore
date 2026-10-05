@@ -54,3 +54,7 @@ data/
 *.csv
 *.json.gz
 checkpoints/
+
+# ── Git files ────────────────────────────────────────────────────────────────
+
+.gitignore

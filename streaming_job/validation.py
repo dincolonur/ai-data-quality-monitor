@@ -138,8 +138,28 @@ def validate_batch(
                     "allowed": rule.allowed_values,
                 })
 
-    valid_rows = total - len(set(i["feature"] for i in issues))
-    validity_rate = round(max(0, total - sum(i["count"] for i in issues)) / total, 4)
+    # Count unique bad rows: a row is invalid if ANY rule failed for it.
+    # We OR together all per-issue filters to avoid double-counting rows that
+    # violate multiple rules (which caused validity_rate to hit 0.00% when
+    # sum(issue_counts) exceeded total).
+    if issues:
+        bad_filter = F.lit(False)
+        for rule in (rules or DEFAULT_RULES):
+            col = rule.name
+            if col not in df.columns:
+                continue
+            if not rule.nullable:
+                bad_filter = bad_filter | F.col(col).isNull()
+            if rule.min_val is not None:
+                bad_filter = bad_filter | (F.col(col).isNotNull() & (F.col(col) < rule.min_val))
+            if rule.max_val is not None:
+                bad_filter = bad_filter | (F.col(col).isNotNull() & (F.col(col) > rule.max_val))
+            if rule.allowed_values:
+                bad_filter = bad_filter | (F.col(col).isNotNull() & ~F.col(col).isin(rule.allowed_values))
+        bad_count = df.filter(bad_filter).count()
+        validity_rate = round((total - bad_count) / total, 4)
+    else:
+        validity_rate = 1.0
 
     summary = {
         "batch_id": batch_id,
